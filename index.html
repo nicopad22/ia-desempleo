@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IA y Mercado Laboral en Chile</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+    <!-- Simulación D3 a Pantalla Completa (100vw x 100vh) -->
+    <div id="chart"></div>
+
+    <!-- Barra Superior Flotante: Título, Escala de Color y Leyenda -->
+    <header class="floating-header">
+        <h1 class="app-title">IA y Mercado Laboral</h1>
+        <div class="segmented-control">
+            <button id="btn-automatizacion" class="control-btn active" title="Escala de probabilidad de sustitución de tareas">
+                Automatización
+            </button>
+            <button id="btn-aumentacion" class="control-btn" title="Escala de complementariedad y aumento de productividad">
+                Aumentación
+            </button>
+        </div>
+        <div class="legend-container">
+            <div class="legend-labels">
+                <span id="legend-min-val">0.0</span>
+                <span id="legend-title">Automatización</span>
+                <span id="legend-max-val">0.41</span>
+            </div>
+            <div id="legend-bar" class="legend-bar automatizacion"></div>
+        </div>
+    </header>
+
+    <!-- Controles Flotantes Superiores Derechos: "Mostrar todo" a la izquierda de "Reiniciar zoom" -->
+    <div class="floating-top-right-controls">
+        <div class="floating-switch-panel">
+            <label class="switch-container">
+                <input type="checkbox" id="toggle-show-all">
+                <span class="switch-slider"></span>
+                <span class="switch-label">Mostrar todo</span>
+            </label>
+        </div>
+        <button id="btn-reset-zoom" class="floating-icon-btn" title="Reiniciar zoom" aria-label="Reiniciar zoom">
+            ↺
+        </button>
+    </div>
+
+    <!-- Ventana Flotante Izquierda: Explorador y Buscador de Carreras -->
+    <aside id="career-search-panel" class="floating-panel floating-panel-left">
+        <div class="panel-header">
+            <h2>Explorador de Carreras</h2>
+        </div>
+        <div class="search-box">
+            <input 
+                type="search" 
+                id="career-search-input" 
+                placeholder="Buscar carrera (ej: Computación)..."
+                autocomplete="off"
+            >
+            <div id="search-results" class="search-results hidden"></div>
+        </div>
+    </aside>
+
+    <!-- Ventana Flotante Derecha: Carreras Seleccionadas (Comparador) -->
+    <aside id="selected-careers-panel" class="floating-panel floating-panel-right">
+        <div class="panel-header-row">
+            <h2>Carreras Seleccionadas (<span id="selected-count">0</span>)</h2>
+            <button id="btn-clear-all" class="text-link-btn" style="display: none;">Limpiar</button>
+        </div>
+        <div id="selected-careers-list" class="selected-careers-list">
+            <div class="empty-state">
+                <p>Ninguna carrera seleccionada.</p>
+                <span class="empty-subtext">Busca en el panel izquierdo para añadir.</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Ventana Emergente Central: Detalle de Ocupación -->
+    <div id="modal-backdrop" class="modal-backdrop hidden"></div>
+    <div id="occupation-modal" class="occupation-modal hidden">
+        <div class="modal-header">
+            <span class="modal-badge" id="modal-isco-code">ISCO-08</span>
+            <button id="btn-close-modal" class="btn-close" aria-label="Cerrar detalle">&times;</button>
+        </div>
+        <div class="modal-body">
+            <h2 id="modal-title" class="modal-title">Título de la Ocupación</h2>
+            <p id="modal-parent-group" class="modal-group">Gran Grupo</p>
+
+            <div class="modal-metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Empleo Nacional (ENE)</span>
+                    <strong id="modal-employment" class="metric-value">-</strong>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Gradiente OIT (IA)</span>
+                    <strong id="modal-gradient" class="metric-value badge-gradient">-</strong>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Puntaje Automatización</span>
+                    <strong id="modal-auto-score" class="metric-value">-</strong>
+                    <div class="mini-bar-track"><div id="modal-auto-bar" class="mini-bar auto"></div></div>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Puntaje Aumentación</span>
+                    <strong id="modal-aug-score" class="metric-value">-</strong>
+                    <div class="mini-bar-track"><div id="modal-aug-bar" class="mini-bar aug"></div></div>
+                </div>
+            </div>
+
+            <div class="modal-related-careers">
+                <h3>Carreras vinculadas</h3>
+                <ul id="modal-careers-list" class="related-careers-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
