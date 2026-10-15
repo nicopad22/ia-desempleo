@@ -19,3 +19,5 @@ Luego el usuario puede elegir filtrar las ocupaciones mostradas, según las ocup
 Para esto, se tiene que preparar una base de datos haciendo un crosswalk entre CINE-F 2013 a ISCO-08 (ver `data_pipeline.md`)
 
 Si el usuario hace click en las carreras elegidas para ver más detalles, puede ver los datos respectivos a esa carrera que pueden ser encontrados en MiFuturo.cl.
+
+[Link a la visualización](https://ia-desempleo.vercel.app/)
