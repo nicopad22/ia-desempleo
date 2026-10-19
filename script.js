@@ -16,8 +16,8 @@ let activeMetric = 'automatizacion';
 
 // Paleta de colores distintivos para las carreras seleccionadas
 const CAREER_PALETTE = [
-    "#2563eb", // Azul eléctrico
-    "#dc2626", // Rojo
+    "#d4eb25", // Azul eléctrico
+    "#00ffaa", // Rojo
     "#16a34a", // Verde esmeralda
     "#9333ea", // Púrpura
     "#ea580c", // Naranja
@@ -59,13 +59,17 @@ function updateColorScaleDomains(treeData) {
     scaleAutomatizacion.domain([0.0, maxAutomatizacion]);
     scaleAumentacion.domain([0.0, maxAumentacion]);
 
-    // Actualizar valor numérico máximo en la leyenda flotante
+    // Actualizar valor numérico máximo en la leyenda flotante y en los tooltips
     const legendMax = document.getElementById("legend-max-val");
     if (legendMax) {
         legendMax.textContent = activeMetric === 'automatizacion' 
             ? maxAutomatizacion.toFixed(2) 
             : maxAumentacion.toFixed(2);
     }
+    const tooltipAutoMax = document.getElementById("tooltip-auto-max");
+    if (tooltipAutoMax) tooltipAutoMax.textContent = maxAutomatizacion.toFixed(2);
+    const tooltipAugMax = document.getElementById("tooltip-aug-max");
+    if (tooltipAugMax) tooltipAugMax.textContent = maxAumentacion.toFixed(2);
 }
 
 function getSemanticColor(leafData) {
@@ -309,40 +313,79 @@ function renderChart() {
         }
     });
 
-    // Función para partir textos en múltiples líneas legibles
-    function wrapTextToLines(text, maxCharsPerLine = 18, maxLines = 3) {
+    // Función para partir textos en múltiples líneas completas (sin cortar con "...")
+    function wrapTextToLines(text) {
         if (!text) return [];
         const words = text.trim().split(/\s+/);
+        const maxCharsPerLine = Math.max(14, Math.min(26, Math.ceil(Math.sqrt(text.length * 4))));
         const lines = [];
         let current = "";
 
-        for (let i = 0; i < words.length; i++) {
-            const word = words[i];
+        for (const word of words) {
             const testLine = current ? `${current} ${word}` : word;
-
-            if (testLine.length <= maxCharsPerLine) {
+            if (testLine.length <= maxCharsPerLine || !current) {
                 current = testLine;
             } else {
-                if (current) lines.push(current);
-                if (lines.length >= maxLines - 1) {
-                    const remainder = words.slice(i).join(" ");
-                    const truncated = remainder.length > maxCharsPerLine 
-                        ? remainder.substring(0, maxCharsPerLine - 2).trim() + "…" 
-                        : remainder;
-                    lines.push(truncated);
-                    current = "";
-                    break;
-                }
+                lines.push(current);
                 current = word;
             }
         }
-        if (current && lines.length < maxLines) {
-            lines.push(current);
-        }
+        if (current) lines.push(current);
         return lines;
     }
 
-    // Etiquetas de texto multilínea con tamaños legibles
+    // Límite de radio en pantalla para evitar que una única ocupación ocupe toda la ventana
+    const MAX_LEAF_SCREEN_RADIUS = Math.min(size * 0.22, 135);
+    // Radio mínimo en pantalla a partir del cual una ocupación muestra su título y abre detalle directo
+    const DIRECT_LEAF_MIN_RADIUS = 34;
+
+    function getTargetView(targetNode) {
+        const leaves = targetNode.leaves();
+        const maxLeafR = d3.max(leaves, l => l.r) || 0;
+        const minDiameter = maxLeafR > 0 ? (maxLeafR * size) / MAX_LEAF_SCREEN_RADIUS : 0;
+        const diameter = Math.max(targetNode.r * 2, minDiameter);
+        return [targetNode.x, targetNode.y, diameter];
+    }
+
+    function isDescendant(nodeObj, ancestor) {
+        let curr = nodeObj.parent;
+        while (curr) {
+            if (curr === ancestor) return true;
+            curr = curr.parent;
+        }
+        return false;
+    }
+
+    function isLabelVisible(d, focusNode, k) {
+        if (FILTER_MODE === 'ghost' && visibleIscoCodes !== null && !d.children && !visibleIscoCodes.has(d.data.isco08)) {
+            return false;
+        }
+        if (!d.children) {
+            return d.parent === focusNode || (isDescendant(d, focusNode) && d.r * k >= DIRECT_LEAF_MIN_RADIUS);
+        }
+        if (d.parent !== focusNode) return false;
+        const hasLargeLeaf = d.leaves().some(leaf => {
+            if (FILTER_MODE === 'ghost' && visibleIscoCodes !== null && !visibleIscoCodes.has(leaf.data.isco08)) {
+                return false;
+            }
+            return leaf.r * k >= DIRECT_LEAF_MIN_RADIUS;
+        });
+        return !hasLargeLeaf;
+    }
+
+    function getDynamicFontSize(d, k) {
+        const r = d.r * k;
+        const lines = d._lines || [];
+        const n = Math.max(1, lines.length);
+        const maxLen = d._maxLineLen || 10;
+        const fitWidth = (r * 1.75) / (maxLen * 0.54);
+        const fitHeight = (r * 1.55) / (n * 1.18);
+        const rawSize = Math.min(fitWidth, fitHeight);
+        const maxFont = d.children ? 20 : 17;
+        return Math.max(9.5, Math.min(maxFont, rawSize));
+    }
+
+    // Etiquetas de texto multilínea con tamaños dinámicos
     const labelGroup = svg.append("g")
         .style("font-family", "system-ui, sans-serif")
         .style("pointer-events", "none")
@@ -352,23 +395,20 @@ function renderChart() {
         .data(root.descendants().slice(1))
         .join("text")
         .attr("class", d => d.children ? "label-parent" : "label-leaf")
-        .style("font-size", d => d.children ? "14px" : "12px")
         .style("font-weight", d => d.children ? "700" : "600")
         .style("fill", "#0f172a")
-        .style("fill-opacity", d => d.parent === root ? 1 : 0)
-        .style("display", d => d.parent === root ? "inline" : "none")
         .each(function(d) {
             const el = d3.select(this);
-            const isParent = !!d.children;
-            const maxChars = isParent ? 22 : 18;
-            const lines = wrapTextToLines(d.data.name || "", maxChars, 3);
+            const lines = wrapTextToLines(d.data.name || "");
+            d._lines = lines;
+            d._maxLineLen = Math.max(1, ...lines.map(l => l.length));
             const n = lines.length;
             if (n === 0) return;
 
             lines.forEach((lineText, idx) => {
                 const dy = idx === 0 
-                    ? `${-((n - 1) / 2) * 1.2 + 0.35}em` 
-                    : "1.2em";
+                    ? `${-((n - 1) / 2) * 1.18 + 0.35}em` 
+                    : "1.18em";
 
                 el.append("tspan")
                     .attr("x", 0)
@@ -377,7 +417,7 @@ function renderChart() {
             });
         });
 
-    // Función de actualización de coordenadas y radios con zoom
+    // Función de actualización de coordenadas, radios y tamaño de texto dinámico
     function zoomTo(v) {
         const k = size / v[2];
         view = v;
@@ -400,36 +440,47 @@ function renderChart() {
             d3.select(this).attr("d", arcPath);
         });
 
-        label.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
+        label
+            .attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
+            .style("font-size", d => `${getDynamicFontSize(d, k).toFixed(1)}px`);
     }
 
-    // Zoom inicial
-    zoomTo([root.x, root.y, root.r * 2]);
+    // Zoom inicial y visibilidad inicial de etiquetas
+    const initialView = getTargetView(root);
+    zoomTo(initialView);
+    const initialK = size / initialView[2];
+    label
+        .style("fill-opacity", d => isLabelVisible(d, root, initialK) ? 1 : 0)
+        .style("display", d => isLabelVisible(d, root, initialK) ? "inline" : "none");
 
     // Función de transición de zoom
     function zoom(event, d) {
         const prevFocus = focus;
+        const prevK = size / view[2];
         focus = d;
         currentFocusNode = d;
+
+        const targetView = getTargetView(focus);
+        const nextK = size / targetView[2];
 
         // Cancelar transiciones previas de etiquetas para prevenir desfases visuales
         label.interrupt();
 
-        // Mostrar solo etiquetas del nuevo foco o del foco previo durante el zoom
-        label.style("display", dNode => (dNode.parent === focus || dNode.parent === prevFocus) ? "inline" : "none");
+        // Mostrar etiquetas visibles en el foco previo o en el nuevo foco durante la transición
+        label.style("display", dNode => (isLabelVisible(dNode, focus, nextK) || isLabelVisible(dNode, prevFocus, prevK)) ? "inline" : "none");
 
         const transition = svg.transition()
             .duration(event && event.altKey ? 5000 : 700)
             .tween("zoom", () => {
-                const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
+                const i = d3.interpolateZoom(view, targetView);
                 return t => zoomTo(i(t));
             });
 
         label
             .transition(transition)
-            .style("fill-opacity", dNode => dNode.parent === focus ? 1 : 0)
+            .style("fill-opacity", dNode => isLabelVisible(dNode, focus, nextK) ? 1 : 0)
             .on("end", function(dNode) { 
-                if (dNode.parent !== focus) {
+                if (!isLabelVisible(dNode, focus, nextK)) {
                     d3.select(this).style("display", "none");
                 }
             });
@@ -459,9 +510,17 @@ function renderChart() {
         }
     });
 
-    // Regla de progresión estricta de navegación paso a paso
+    // Navegación: acceso directo al detalle si la ocupación es suficientemente grande, o progresión por nivel
     node.on("click", function(event, d) {
         event.stopPropagation();
+        const currentK = size / view[2];
+
+        // 0. Si es una ocupación (hoja) suficientemente grande o hija directa del foco, abrir su detalle directo
+        if (!d.children && (d.parent === focus || d.r * currentK >= DIRECT_LEAF_MIN_RADIUS)) {
+            const parentName = d.parent ? d.parent.data.name : "Gran Grupo";
+            openOccupationModal(d.data, parentName);
+            return;
+        }
 
         // 1. Si se hace clic en la categoría que YA está en foco -> retroceder al nivel anterior
         if (d === focus) {
@@ -479,16 +538,14 @@ function renderChart() {
 
         if (nextStep.parent === focus) {
             if (nextStep.children) {
-                // Es una subcategoría: hacer zoom a ella
                 zoom(event, nextStep);
             } else {
-                // Es un nodo hoja y YA estamos en su categoría inmediata: abrir modal
                 openOccupationModal(nextStep.data, focus.data.name);
             }
             return;
         }
 
-        // 3. Si d está en otra rama, zoom a su ancestro común o al padre de d
+        // 3. Si d está en otra rama, zoom al padre de d
         if (d.parent) {
             zoom(event, d.parent);
         }
@@ -640,9 +697,24 @@ function renderSelectedCareers() {
             </div>
             <div class="career-card-meta">
                 <span>${c.nivel} · ${c.ocupaciones.length} ocupaciones</span>
+                <a href="https://www.mifuturo.cl/buscador-de-estadisticas-por-carrera/" target="_blank" rel="noopener noreferrer" class="career-mifuturo-link">
+                    MiFuturo.cl &nearr;
+                </a>
             </div>
         </div>
     `).join("");
+}
+
+function toggleCareerFromModal(careerId, btnEl) {
+    if (selectedCareers.has(careerId)) {
+        removeCareer(careerId);
+        btnEl.textContent = "+ Comparar";
+        btnEl.classList.remove("is-selected");
+    } else {
+        addCareer(careerId);
+        btnEl.textContent = "Seleccionada";
+        btnEl.classList.add("is-selected");
+    }
 }
 
 // =============================================================================
@@ -690,7 +762,7 @@ function openOccupationModal(leafData, groupName) {
                     <strong>${carrera.nombre}</strong><br>
                     <span class="item-meta">${carrera.nivel}</span>
                 </div>
-                <button class="btn-add-career-sm" ${isAlreadySelected ? 'disabled' : ''} onclick="addCareer('${carrera.id}')">
+                <button class="btn-add-career-sm ${isAlreadySelected ? 'is-selected' : ''}" onclick="toggleCareerFromModal('${carrera.id}', this)">
                     ${isAlreadySelected ? 'Seleccionada' : '+ Comparar'}
                 </button>
             `;
