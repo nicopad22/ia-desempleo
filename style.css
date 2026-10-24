@@ -481,7 +481,7 @@ html, body {
     position: fixed;
     top: 66px;
     left: 20px;
-    width: 300px;
+    width: 260px;
     max-width: calc(100vw - 40px);
 }
 
@@ -610,7 +610,7 @@ html, body {
     position: fixed;
     top: 66px;
     right: 20px;
-    width: 300px;
+    width: 260px;
     max-width: calc(100vw - 40px);
     max-height: calc(100vh - 86px);
     display: flex;

@@ -223,9 +223,11 @@ function renderChart() {
 
     const width = window.innerWidth;
     const height = window.innerHeight;
-    // Área libre para el gráfico: bajo el encabezado y entre los paneles laterales
-    const TOP_OFFSET = 175;
-    const size = Math.min(width > 1000 ? width - 680 : width, height - TOP_OFFSET);
+    // El gráfico usa casi todo el alto; el encabezado y los paneles flotan encima.
+    // En pantallas anchas se deja libre el ancho de los paneles laterales (260px + márgenes).
+    const TOP_OFFSET = 60;
+    const BOTTOM_MARGIN = 12;
+    const size = Math.min(width > 1000 ? width - 2 * 292 : width, height - TOP_OFFSET - BOTTOM_MARGIN);
 
     const visibleIscoCodes = getVisibleIscoCodes();
 
@@ -262,7 +264,7 @@ function renderChart() {
     currentFocusNode = root;
 
     const svg = d3.create("svg")
-        .attr("viewBox", `-${width / 2} -${height / 2 + TOP_OFFSET / 2} ${width} ${height}`)
+        .attr("viewBox", `-${width / 2} -${height / 2 + (TOP_OFFSET - BOTTOM_MARGIN) / 2} ${width} ${height}`)
         .attr("width", "100%")
         .attr("height", "100%")
         .attr("style", "max-width: 100%; height: 100%; display: block; background: #f8fafc;");
