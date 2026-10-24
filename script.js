@@ -230,13 +230,16 @@ function renderChart() {
 
     const width = window.innerWidth;
     const height = window.innerHeight;
+    const visibleIscoCodes = getVisibleIscoCodes();
+
     // El gráfico usa casi todo el alto; el encabezado y los paneles flotan encima.
+    // En la vista filtrada las ocupaciones llegan hasta el borde del círculo raíz, así que
+    // el gráfico empieza bajo el encabezado y el breadcrumb para que ninguna quede tapada.
     // En pantallas anchas se deja libre el ancho de los paneles laterales (260px + márgenes).
-    const TOP_OFFSET = 60;
+    const isFilteredView = FILTER_MODE === 'repack' && visibleIscoCodes !== null;
+    const TOP_OFFSET = isFilteredView ? 180 : 60;
     const BOTTOM_MARGIN = 12;
     const size = Math.min(width > 1000 ? width - 2 * 292 : width, height - TOP_OFFSET - BOTTOM_MARGIN);
-
-    const visibleIscoCodes = getVisibleIscoCodes();
 
     // Determinar árbol a renderizar según FILTER_MODE
     let activeHierarchyData = ISCO_HIERARCHY_DATA;
@@ -359,7 +362,7 @@ function renderChart() {
     }
 
     // Nombre de ocupación en dos líneas como máximo: se parte en el espacio que deja las
-    // líneas más parejas; si una línea supera 26 caracteres, se corta con "…"
+    // líneas más parejas; si una línea supera 24 caracteres, se corta con "…"
     function wrapLeafName(name) {
         const words = name.trim().split(/\s+/);
         if (name.length <= 16 || words.length === 1) return [name];
@@ -368,7 +371,7 @@ function renderChart() {
             const lines = [words.slice(0, i).join(" "), words.slice(i).join(" ")];
             if (!best || Math.max(...lines.map(l => l.length)) < Math.max(...best.map(l => l.length))) best = lines;
         }
-        return best.map(l => l.length > 26 ? l.slice(0, 25).trimEnd() + "…" : l);
+        return best.map(l => l.length > 24 ? l.slice(0, 23).trimEnd() + "…" : l);
     }
 
     function getDynamicFontSize(d, k) {
@@ -380,7 +383,7 @@ function renderChart() {
         const fitHeight = (r * 1.55) / (n * 1.18);
         const rawSize = Math.min(fitWidth, fitHeight);
         const maxFont = d.children ? 12 : 14;
-        return Math.max(9, Math.min(maxFont, rawSize));
+        return Math.max(8, Math.min(maxFont, rawSize));
     }
 
     // Etiquetas de texto multilínea con tamaños dinámicos

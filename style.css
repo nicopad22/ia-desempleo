@@ -11,12 +11,15 @@
     --primary-hover: #1d4ed8;
     --primary-light: #eff6ff;
 
+    /* Radios: --radius-md para todo lo que flota, --radius-sm para elementos internos */
     --radius-sm: 6px;
     --radius-md: 10px;
-    --radius-lg: 16px;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 10px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.15), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    /* Sombras suaves: --shadow-md para todo lo que flota sobre el gráfico */
+    --shadow-sm: 0 1px 2px 0 rgba(28, 25, 23, 0.05);
+    --shadow-md: 0 4px 14px -2px rgba(28, 25, 23, 0.10);
+    --shadow-lg: 0 12px 28px -6px rgba(28, 25, 23, 0.18);
+    /* Margen de los elementos flotantes respecto del borde de la pantalla */
+    --edge: 16px;
 }
 
 * {
@@ -66,8 +69,8 @@ html, body {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 6px 18px;
+    border-radius: var(--radius-md);
+    padding: 8px 16px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -92,7 +95,7 @@ html, body {
 .segmented-control {
     display: inline-flex;
     background-color: #f1f5f9;
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     padding: 2px;
     border: 1px solid var(--border-color);
 }
@@ -104,7 +107,7 @@ html, body {
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-secondary);
-    border-radius: 16px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
 }
 
@@ -247,7 +250,7 @@ html, body {
 .legend-swatch {
     width: 100%;
     height: 14px;
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
 }
 
@@ -274,8 +277,8 @@ html, body {
 /* Controles Flotantes Superiores Derechos (Misma línea superior) */
 .floating-top-right-controls {
     position: fixed;
-    top: 16px;
-    right: 20px;
+    top: var(--edge);
+    right: var(--edge);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -285,7 +288,7 @@ html, body {
 .floating-icon-btn {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-color);
@@ -310,13 +313,13 @@ html, body {
 .floating-text-btn {
     height: 40px;
     padding: 0 14px;
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     border: 1px solid #fecaca;
     background: #fef2f2;
     color: #dc2626;
     font-size: 0.75rem;
     font-weight: 700;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
     cursor: pointer;
     white-space: nowrap;
 }
@@ -328,15 +331,15 @@ html, body {
 /* Breadcrumb de navegación del zoom, bajo el encabezado */
 .breadcrumb {
     position: fixed;
-    top: 142px;
+    top: 146px;
     left: 50%;
     transform: translateX(-50%);
     max-width: min(660px, calc(100vw - 32px));
     padding: 4px 12px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
     font-size: 0.72rem;
     color: var(--text-muted);
     text-align: center;
@@ -370,7 +373,7 @@ html, body {
 /* Aviso sobre el gráfico cuando quedan muy pocas ocupaciones */
 .chart-notice {
     position: fixed;
-    bottom: 24px;
+    bottom: var(--edge);
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -411,12 +414,12 @@ html, body {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-color);
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     height: 40px;
     padding: 0 14px;
     display: flex;
     align-items: center;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
     flex-shrink: 0;
 }
 
@@ -472,15 +475,15 @@ html, body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-md);
-    padding: 14px;
+    padding: 16px;
     z-index: 30;
 }
 
 /* Ventana Izquierda: Explorador de Carreras */
 .floating-panel-left {
     position: fixed;
-    top: 66px;
-    left: 20px;
+    top: 68px;
+    left: var(--edge);
     width: 260px;
     max-width: calc(100vw - 40px);
 }
@@ -608,11 +611,11 @@ html, body {
 /* Ventana Derecha: Carreras Seleccionadas */
 .floating-panel-right {
     position: fixed;
-    top: 66px;
-    right: 20px;
+    top: 68px;
+    right: var(--edge);
     width: 260px;
     max-width: calc(100vw - 40px);
-    max-height: calc(100vh - 86px);
+    max-height: calc(100vh - 68px - var(--edge));
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -622,10 +625,12 @@ html, body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 6px;
     margin-bottom: 10px;
 }
 
 .panel-header-row h2 {
+    white-space: nowrap;
     font-size: 0.85rem;
     font-weight: 700;
     color: var(--text-primary);
@@ -735,9 +740,14 @@ html, body {
     color: var(--text-secondary);
     padding-left: 18px;
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
+    gap: 2px 8px;
+}
+
+.career-card-meta span {
+    white-space: nowrap;
 }
 
 .career-mifuturo-link {
@@ -777,7 +787,7 @@ html, body {
     max-width: 92vw;
     max-height: 85vh;
     background: var(--bg-surface);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--border-color);
     z-index: 90;
@@ -798,7 +808,7 @@ html, body {
     font-weight: 700;
     font-size: 0.72rem;
     padding: 3px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
 }
 
 .btn-close {
@@ -860,7 +870,7 @@ html, body {
 .badge-gradient {
     font-size: 0.72rem;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     background-color: #f1f5f9;
 }
 
@@ -916,7 +926,7 @@ html, body {
     font-size: 0.68rem;
     font-weight: 600;
     padding: 3px 8px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
 }
 
