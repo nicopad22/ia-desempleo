@@ -72,6 +72,13 @@ function getMetricText(leafData) {
     return `${getExposureLabel(score, isAuto ? scaleAutomatizacion : scaleAumentacion)} · ${score.toFixed(2)}`;
 }
 
+// Color del texto de una ocupación: oscuro sobre rellenos claros, blanco sobre rellenos oscuros
+function getLeafTextColor(leafData, opacity = 1) {
+    const color = d3.color(d3.lab(getSemanticColor(leafData)).l > 60 ? "#1c1917" : "#ffffff");
+    color.opacity = opacity;
+    return color.formatRgb();
+}
+
 // Asignar el siguiente color disponible a una carrera
 function getNextCareerColor() {
     const usedColors = new Set(Array.from(selectedCareers.values()).map(c => c.color));
@@ -355,30 +362,26 @@ function renderChart() {
         return [targetNode.x, targetNode.y, diameter];
     }
 
-    function isDescendant(nodeObj, ancestor) {
-        let curr = nodeObj.parent;
-        while (curr) {
-            if (curr === ancestor) return true;
-            curr = curr.parent;
-        }
-        return false;
-    }
-
-    function isLabelVisible(d, focusNode, k) {
+    // Como en el ejemplo de Observable: solo se ven los nombres de los hijos del nodo con foco
+    // (en "Mostrar todo", las ocupaciones atenuadas no muestran nombre)
+    function isLabelVisible(d, focusNode) {
         if (FILTER_MODE === 'ghost' && visibleIscoCodes !== null && !d.children && !visibleIscoCodes.has(d.data.isco08)) {
             return false;
         }
-        if (!d.children) {
-            return d.parent === focusNode || (isDescendant(d, focusNode) && d.r * k >= DIRECT_LEAF_MIN_RADIUS);
+        return d.parent === focusNode;
+    }
+
+    // Nombre de ocupación en dos líneas como máximo: se parte en el espacio que deja las
+    // líneas más parejas; si una línea supera 26 caracteres, se corta con "…"
+    function wrapLeafName(name) {
+        const words = name.trim().split(/\s+/);
+        if (name.length <= 16 || words.length === 1) return [name];
+        let best = null;
+        for (let i = 1; i < words.length; i++) {
+            const lines = [words.slice(0, i).join(" "), words.slice(i).join(" ")];
+            if (!best || Math.max(...lines.map(l => l.length)) < Math.max(...best.map(l => l.length))) best = lines;
         }
-        if (d.parent !== focusNode) return false;
-        const hasLargeLeaf = d.leaves().some(leaf => {
-            if (FILTER_MODE === 'ghost' && visibleIscoCodes !== null && !visibleIscoCodes.has(leaf.data.isco08)) {
-                return false;
-            }
-            return leaf.r * k >= DIRECT_LEAF_MIN_RADIUS;
-        });
-        return !hasLargeLeaf;
+        return best.map(l => l.length > 26 ? l.slice(0, 25).trimEnd() + "…" : l);
     }
 
     function getDynamicFontSize(d, k) {
@@ -386,16 +389,17 @@ function renderChart() {
         const lines = d._lines || [];
         const n = Math.max(1, lines.length);
         const maxLen = d._maxLineLen || 10;
-        const fitWidth = (r * 1.75) / (maxLen * 0.54);
+        const fitWidth = (r * 1.7) / (maxLen * 0.56);
         const fitHeight = (r * 1.55) / (n * 1.18);
         const rawSize = Math.min(fitWidth, fitHeight);
-        const maxFont = d.children ? 13 : 17;
-        return Math.max(9.5, Math.min(maxFont, rawSize));
+        const maxFont = d.children ? 12 : 14;
+        return Math.max(9, Math.min(maxFont, rawSize));
     }
 
     // Etiquetas de texto multilínea con tamaños dinámicos
     const labelGroup = svg.append("g")
-        .style("font-family", "system-ui, sans-serif")
+        .style("font-family", "system-ui, -apple-system, sans-serif")
+        .style("font-weight", "500")
         .style("pointer-events", "none")
         .attr("text-anchor", "middle");
 
@@ -407,9 +411,10 @@ function renderChart() {
         .each(function(d) {
             if (d.children) d3.select(this).append("rect").attr("class", "label-pill");
             const el = d3.select(this).append("text")
-                .style("font-weight", d.children ? "700" : "600")
-                .style("fill", "#0f172a");
-            const lines = wrapTextToLines(d.data.name || "");
+                .style("fill", d.children ? "#1c1917" : getLeafTextColor(d.data));
+            const lines = d.children
+                ? wrapTextToLines(d.data.name || "")
+                : wrapLeafName(d.data.name || "");
             // En la vista filtrada, las ocupaciones muestran además su tramo y puntaje
             const showMetric = !d.children && visibleIscoCodes !== null;
             d._lines = showMetric ? [...lines, getMetricText(d.data)] : lines;
@@ -431,6 +436,7 @@ function renderChart() {
             if (showMetric) {
                 el.append("tspan")
                     .attr("class", "metric-line")
+                    .style("fill", getLeafTextColor(d.data, 0.75))
                     .attr("x", 0)
                     .attr("dy", "1.3em")
                     .text(getMetricText(d.data));
@@ -474,27 +480,24 @@ function renderChart() {
     // Zoom inicial y visibilidad inicial de etiquetas
     const initialView = getTargetView(root);
     zoomTo(initialView);
-    const initialK = size / initialView[2];
     label
-        .style("fill-opacity", d => isLabelVisible(d, root, initialK) ? 1 : 0)
-        .style("display", d => isLabelVisible(d, root, initialK) ? "inline" : "none");
+        .style("fill-opacity", d => isLabelVisible(d, root) ? 1 : 0)
+        .style("display", d => isLabelVisible(d, root) ? "inline" : "none");
 
     // Función de transición de zoom
     function zoom(event, d) {
         const prevFocus = focus;
-        const prevK = size / view[2];
         focus = d;
         currentFocusNode = d;
         renderBreadcrumb(focus, rootLabel, n => zoom(null, n));
 
         const targetView = getTargetView(focus);
-        const nextK = size / targetView[2];
 
         // Cancelar transiciones previas de etiquetas para prevenir desfases visuales
         label.interrupt();
 
         // Mostrar etiquetas visibles en el foco previo o en el nuevo foco durante la transición
-        label.style("display", dNode => (isLabelVisible(dNode, focus, nextK) || isLabelVisible(dNode, prevFocus, prevK)) ? "inline" : "none");
+        label.style("display", dNode => (isLabelVisible(dNode, focus) || isLabelVisible(dNode, prevFocus)) ? "inline" : "none");
 
         const transition = svg.transition()
             .duration(event && event.altKey ? 5000 : 700)
@@ -505,9 +508,9 @@ function renderChart() {
 
         label
             .transition(transition)
-            .style("fill-opacity", dNode => isLabelVisible(dNode, focus, nextK) ? 1 : 0)
+            .style("fill-opacity", dNode => isLabelVisible(dNode, focus) ? 1 : 0)
             .on("end", function(dNode) { 
-                if (!isLabelVisible(dNode, focus, nextK)) {
+                if (!isLabelVisible(dNode, focus)) {
                     d3.select(this).style("display", "none");
                 }
             });
@@ -620,8 +623,11 @@ function renderBreadcrumb(focusNode, rootLabel, onSelect) {
 function updateColorScale() {
     d3.selectAll(".circle-leaf")
         .attr("fill", d => getSemanticColor(d.data));
+    d3.selectAll(".label-leaf text")
+        .style("fill", d => getLeafTextColor(d.data));
     d3.selectAll(".metric-line")
-        .text(d => getMetricText(d.data));
+        .text(d => getMetricText(d.data))
+        .style("fill", d => getLeafTextColor(d.data, 0.75));
 
     renderLegend();
 }

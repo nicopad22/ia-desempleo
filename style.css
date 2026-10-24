@@ -947,14 +947,13 @@ circle {
 
 /* Píldora de fondo para los nombres de grupo */
 .label-pill {
-    fill: rgba(255, 255, 255, 0.85);
-    stroke: var(--border-color);
+    fill: rgba(255, 255, 255, 0.75);
 }
 
 /* Tramo y puntaje bajo el nombre de la ocupación (vista filtrada) */
 .metric-line {
     font-size: 0.78em;
-    font-weight: 500;
+    font-weight: 400;
 }
 
 .node--dimmed {
@@ -962,11 +961,6 @@ circle {
 }
 
 text {
-    paint-order: stroke fill;
-    stroke: rgba(255, 255, 255, 0.95);
-    stroke-width: 3.5px;
-    stroke-linejoin: round;
-    stroke-linecap: round;
     user-select: none;
     pointer-events: none;
 }
