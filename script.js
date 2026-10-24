@@ -224,7 +224,7 @@ function renderChart() {
     const width = window.innerWidth;
     const height = window.innerHeight;
     // Área libre para el gráfico: bajo el encabezado y entre los paneles laterales
-    const TOP_OFFSET = 100;
+    const TOP_OFFSET = 130;
     const size = Math.min(width > 1000 ? width - 680 : width, height - TOP_OFFSET);
 
     const visibleIscoCodes = getVisibleIscoCodes();
@@ -235,6 +235,15 @@ function renderChart() {
         const pruned = pruneHierarchy(ISCO_HIERARCHY_DATA, visibleIscoCodes);
         activeHierarchyData = pruned ? applyTransitivity(pruned) : { name: "Sin resultados", children: [] };
     }
+
+    // Aviso cuando el filtro deja menos de 3 ocupaciones visibles
+    const visibleCount = visibleIscoCodes === null ? null
+        : getAllLeaves(ISCO_HIERARCHY_DATA).filter(l => visibleIscoCodes.has(l.isco08)).length;
+    const showNotice = FILTER_MODE === 'repack' && visibleCount !== null && visibleCount < 3;
+    document.getElementById("chart-notice").classList.toggle("hidden", !showNotice);
+    document.getElementById("chart-notice-text").textContent = visibleCount === 0
+        ? "Ninguna ocupación del gráfico está relacionada con tus carreras."
+        : `Solo ${visibleCount === 1 ? "hay 1 ocupación relacionada" : `hay ${visibleCount} ocupaciones relacionadas`} con tus carreras.`;
 
     const pack = data => d3.pack()
         .size([size, size])
@@ -439,6 +448,12 @@ function renderChart() {
             .style("font-size", d => `${getDynamicFontSize(d, k).toFixed(1)}px`);
     }
 
+    // Nombre del nivel raíz en el breadcrumb
+    const rootLabel = FILTER_MODE === 'repack' && visibleIscoCodes !== null
+        ? "Ocupaciones relacionadas"
+        : "Todas las ocupaciones";
+    renderBreadcrumb(root, rootLabel, n => zoom(null, n));
+
     // Zoom inicial y visibilidad inicial de etiquetas
     const initialView = getTargetView(root);
     zoomTo(initialView);
@@ -453,6 +468,7 @@ function renderChart() {
         const prevK = size / view[2];
         focus = d;
         currentFocusNode = d;
+        renderBreadcrumb(focus, rootLabel, n => zoom(null, n));
 
         const targetView = getTargetView(focus);
         const nextK = size / targetView[2];
@@ -567,6 +583,20 @@ function renderChart() {
 
     const chartElement = svg.node();
     chartContainer.appendChild(chartElement);
+}
+
+// Breadcrumb con la ruta desde la raíz hasta el foco actual; onSelect hace zoom al nivel clickeado
+function renderBreadcrumb(focusNode, rootLabel, onSelect) {
+    const nav = document.getElementById("breadcrumb");
+    nav.innerHTML = "";
+    focusNode.ancestors().reverse().forEach((n, i) => {
+        if (i > 0) nav.append(" › ");
+        const btn = document.createElement("button");
+        btn.textContent = i === 0 ? rootLabel : n.data.name;
+        btn.disabled = n === focusNode;
+        btn.addEventListener("click", () => onSelect(n));
+        nav.append(btn);
+    });
 }
 
 // Cambio instantáneo de paleta de color (sin transiciones)
@@ -826,6 +856,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Botón limpiar carreras
     document.getElementById("btn-clear-all").addEventListener("click", clearAllCareers);
+
+    // Botón global "Limpiar todo": quita carreras, desactiva "Mostrar todo", cierra el modal
+    // y vuelve a la raíz (renderChart siempre dibuja desde la raíz)
+    document.getElementById("btn-clear-everything").addEventListener("click", () => {
+        selectedCareers.clear();
+        toggleShowAll.checked = false;
+        FILTER_MODE = 'repack';
+        closeOccupationModal();
+        renderSelectedCareers();
+        renderChart();
+    });
+
+    // Aviso de vista con pocas ocupaciones: "Ver todas las ocupaciones" activa "Mostrar todo"
+    document.getElementById("btn-show-all-occupations").addEventListener("click", () => {
+        toggleShowAll.checked = true;
+        toggleShowAll.dispatchEvent(new Event("change"));
+    });
 
     // Cerrar modal central
     document.getElementById("btn-close-modal").addEventListener("click", closeOccupationModal);

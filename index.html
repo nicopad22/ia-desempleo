@@ -83,7 +83,16 @@
         </div>
     </header>
 
-    <!-- Controles Flotantes Superiores Derechos: "Mostrar todo" a la izquierda de "Reiniciar zoom" -->
+    <!-- Breadcrumb: ruta del zoom actual (cada nivel es clickeable) -->
+    <nav id="breadcrumb" class="breadcrumb" aria-label="Ruta del zoom"></nav>
+
+    <!-- Aviso cuando el filtro deja muy pocas ocupaciones (o ninguna) -->
+    <div id="chart-notice" class="chart-notice hidden">
+        <span id="chart-notice-text"></span>
+        <button id="btn-show-all-occupations" class="notice-btn">Ver todas las ocupaciones</button>
+    </div>
+
+    <!-- Controles Flotantes Superiores Derechos: "Mostrar todo", "Limpiar todo" y "Reiniciar zoom" -->
     <div class="floating-top-right-controls">
         <div class="floating-switch-panel">
             <label class="switch-container">
@@ -92,6 +101,7 @@
                 <span class="switch-label">Mostrar todo</span>
             </label>
         </div>
+        <button id="btn-clear-everything" class="floating-text-btn">Limpiar todo</button>
         <button id="btn-reset-zoom" class="floating-icon-btn" title="Reiniciar zoom" aria-label="Reiniciar zoom">
             ↺
         </button>
