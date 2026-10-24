@@ -102,6 +102,11 @@
         <div class="panel-header">
             <h2>Explorador de Carreras</h2>
         </div>
+        <ol id="career-steps" class="career-steps">
+            <li data-step="1" class="active">① Busca una carrera que te interese</li>
+            <li data-step="2">② Mira en qué trabajan sus egresados (los círculos se filtran)</li>
+            <li data-step="3">③ Haz clic en un círculo para ver el detalle y comparar</li>
+        </ol>
         <div class="search-box">
             <input 
                 type="search" 
@@ -111,6 +116,9 @@
             >
             <div id="search-results" class="search-results hidden"></div>
         </div>
+        <p id="career-added-hint" class="career-hint hidden">
+            Listo: ahora el gráfico solo muestra las ocupaciones relacionadas con esta carrera. Puedes agregar más carreras para comparar.
+        </p>
     </aside>
 
     <!-- Ventana Flotante Derecha: Carreras Seleccionadas (Comparador) -->

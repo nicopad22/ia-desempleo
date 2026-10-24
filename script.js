@@ -98,13 +98,23 @@ function searchCareers(query) {
     const q = normalizeText(query);
     if (!q) return [...CATALOGO_CARRERAS];
 
-    return CATALOGO_CARRERAS.filter(carrera => {
-        const titleMatch = normalizeText(carrera.nombre).includes(q);
+    // Relevancia: 0 = el nombre empieza con la búsqueda, 1 = el nombre la contiene,
+    // 2 = coincide por área o alias, -1 = no coincide
+    function rank(carrera) {
+        const title = normalizeText(carrera.nombre);
+        if (title.startsWith(q)) return 0;
+        if (title.includes(q)) return 1;
         const areaMatch = normalizeText(carrera.area || carrera.area_cine || "").includes(q);
         const aliases = carrera.alias || carrera.alias_busqueda || [];
         const aliasMatch = aliases.some(a => normalizeText(a).includes(q));
-        return titleMatch || areaMatch || aliasMatch;
-    });
+        return areaMatch || aliasMatch ? 2 : -1;
+    }
+
+    return CATALOGO_CARRERAS
+        .map(carrera => ({ carrera, r: rank(carrera) }))
+        .filter(item => item.r >= 0)
+        .sort((a, b) => a.r - b.r)
+        .map(item => item.carrera);
 }
 
 function getVisibleIscoCodes() {
@@ -662,6 +672,13 @@ function renderSelectedCareers() {
     countEl.textContent = selectedCareers.size;
     clearBtn.style.display = selectedCareers.size > 0 ? "inline-block" : "none";
 
+    // Guía de pasos: sin carreras se resalta el paso 1; con carreras, los pasos 2 y 3
+    document.querySelectorAll("#career-steps li").forEach(li => {
+        li.classList.toggle("active", (li.dataset.step === "1") === (selectedCareers.size === 0));
+    });
+    // Aviso tras agregar la primera carrera (solo cuando el gráfico se filtra)
+    document.getElementById("career-added-hint").classList.toggle("hidden", selectedCareers.size !== 1 || FILTER_MODE !== 'repack');
+
     if (selectedCareers.size === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -803,6 +820,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const toggleShowAll = document.getElementById("toggle-show-all");
     toggleShowAll.addEventListener("change", (e) => {
         FILTER_MODE = e.target.checked ? 'ghost' : 'repack';
+        renderSelectedCareers();
         renderChart();
     });
 
