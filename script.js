@@ -152,45 +152,20 @@ function getAllLeaves(node) {
     return node.children.flatMap(getAllLeaves);
 }
 
-// Transitividad: cuando en vista filtrada una ocupación es la única en una categoría,
-// se colapsan los niveles intermedios para que pertenezca directamente a la categoría grande (Gran Grupo).
-function applyTransitivity(node, depth = 0) {
+// Vista filtrada con muchas ocupaciones: se reemplaza cada grupo que tiene un solo hijo
+// por ese hijo, para no dibujar anillos vacíos (la raíz se mantiene)
+function collapseSingleChild(node, isRoot = true) {
     if (!node.children || node.children.length === 0) return { ...node };
+    const children = node.children.map(child => collapseSingleChild(child, false));
+    if (!isRoot && children.length === 1) return children[0];
+    return { ...node, children };
+}
 
-    let processedChildren = node.children.map(child => applyTransitivity(child, depth + 1));
-
-    // Si es Root (depth 0), preservamos los Grandes Grupos (depth 1)
-    if (depth === 0) {
-        return {
-            ...node,
-            children: processedChildren
-        };
-    }
-
-    // Para cualquier categoría bajo Root (Grandes Grupos o subcategorías):
-    // Colapsar intermediarios redundantes que solo contengan 1 ocupación
-    // o intermediarios que solo contengan 1 subcategoría
-    const newChildren = [];
-    for (const child of processedChildren) {
-        if (child.children && child.children.length > 0) {
-            const leaves = getAllLeaves(child);
-            if (leaves.length === 1) {
-                // Transitividad: la ocupación pertenece directamente a la categoría grande
-                newChildren.push(leaves[0]);
-                continue;
-            }
-            if (child.children.length === 1 && child.children[0].children) {
-                newChildren.push(child.children[0]);
-                continue;
-            }
-        }
-        newChildren.push(child);
-    }
-
-    return {
-        ...node,
-        children: newChildren
-    };
+// Vista filtrada con pocas ocupaciones: todas las ocupaciones al mismo nivel, sin grupos.
+// Se guarda el nombre del grupo original para mostrarlo en el detalle.
+function flattenLeaves(node, groupName) {
+    if (!node.children || node.children.length === 0) return [{ ...node, grupo: groupName }];
+    return node.children.flatMap(child => flattenLeaves(child, node.name));
 }
 
 // Obtener las carreras seleccionadas asociadas a una ocupación
@@ -208,6 +183,9 @@ function getMatchingSelectedCareers(leafData) {
 // =============================================================================
 // 4. VISUALIZACIÓN D3 (ZOOMABLE CIRCLE PACKING A PANTALLA COMPLETA)
 // =============================================================================
+
+// Con esta cantidad de ocupaciones o menos, la vista filtrada no muestra grupos
+const MAX_FLAT_OCCUPATIONS = 15;
 
 let resetZoomFunction = null;
 let currentFocusNode = null;
@@ -233,7 +211,13 @@ function renderChart() {
     let activeHierarchyData = ISCO_HIERARCHY_DATA;
     if (FILTER_MODE === 'repack' && visibleIscoCodes !== null) {
         const pruned = pruneHierarchy(ISCO_HIERARCHY_DATA, visibleIscoCodes);
-        activeHierarchyData = pruned ? applyTransitivity(pruned) : { name: "Sin resultados", children: [] };
+        if (!pruned) {
+            activeHierarchyData = { name: "Sin resultados", children: [] };
+        } else if (getAllLeaves(pruned).length <= MAX_FLAT_OCCUPATIONS) {
+            activeHierarchyData = { ...pruned, children: flattenLeaves(pruned, pruned.name) };
+        } else {
+            activeHierarchyData = collapseSingleChild(pruned);
+        }
     }
 
     // Aviso cuando el filtro deja menos de 3 ocupaciones visibles
@@ -757,7 +741,7 @@ function openOccupationModal(leafData, groupName) {
 
     document.getElementById("modal-isco-code").textContent = `ISCO-08: ${leafData.isco08}`;
     document.getElementById("modal-title").textContent = leafData.name;
-    document.getElementById("modal-parent-group").textContent = groupName || "Gran Grupo";
+    document.getElementById("modal-parent-group").textContent = leafData.grupo || groupName || "Gran Grupo";
 
     const empFormatted = leafData.value ? Number(leafData.value).toLocaleString("es-CL") : "Sin dato";
     document.getElementById("modal-employment").textContent = empFormatted;
