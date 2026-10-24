@@ -937,6 +937,12 @@ circle {
     /* No transición de fill para permitir cambio instantáneo */
 }
 
+/* Píldora de fondo para los nombres de grupo */
+.label-pill {
+    fill: rgba(255, 255, 255, 0.85);
+    stroke: var(--border-color);
+}
+
 /* Tramo y puntaje bajo el nombre de la ocupación (vista filtrada) */
 .metric-line {
     font-size: 0.78em;

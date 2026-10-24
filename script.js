@@ -367,7 +367,7 @@ function renderChart() {
         const fitWidth = (r * 1.75) / (maxLen * 0.54);
         const fitHeight = (r * 1.55) / (n * 1.18);
         const rawSize = Math.min(fitWidth, fitHeight);
-        const maxFont = d.children ? 20 : 17;
+        const maxFont = d.children ? 13 : 17;
         return Math.max(9.5, Math.min(maxFont, rawSize));
     }
 
@@ -377,14 +377,16 @@ function renderChart() {
         .style("pointer-events", "none")
         .attr("text-anchor", "middle");
 
-    const label = labelGroup.selectAll("text")
+    // Cada etiqueta es un grupo <g>; los nombres de grupo llevan además una píldora blanca de fondo
+    const label = labelGroup.selectAll("g")
         .data(root.descendants().slice(1))
-        .join("text")
+        .join("g")
         .attr("class", d => d.children ? "label-parent" : "label-leaf")
-        .style("font-weight", d => d.children ? "700" : "600")
-        .style("fill", "#0f172a")
         .each(function(d) {
-            const el = d3.select(this);
+            if (d.children) d3.select(this).append("rect").attr("class", "label-pill");
+            const el = d3.select(this).append("text")
+                .style("font-weight", d.children ? "700" : "600")
+                .style("fill", "#0f172a");
             const lines = wrapTextToLines(d.data.name || "");
             // En la vista filtrada, las ocupaciones muestran además su tramo y puntaje
             const showMetric = !d.children && visibleIscoCodes !== null;
@@ -421,7 +423,6 @@ function renderChart() {
         node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
         circle.attr("r", d => Math.max(0, d.r * k));
 
-        // Actualizar arcos de borde multicolor
         // Anillos de carreras: cada uno 3px más adentro que el anterior
         node.selectAll(".career-rings circle")
             .attr("r", function(d) { return Math.max(0, d.r * k - 1 - this.getAttribute("data-index") * 3); });
@@ -429,6 +430,17 @@ function renderChart() {
         label
             .attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
             .style("font-size", d => `${getDynamicFontSize(d, k).toFixed(1)}px`);
+
+        // Tamaño aproximado de la píldora según el largo y la cantidad de líneas del texto
+        label.select(".label-pill").each(function(d) {
+            const fontSize = getDynamicFontSize(d, k);
+            const w = d._maxLineLen * fontSize * 0.6 + 14;
+            const h = d._lines.length * fontSize * 1.18 + 6;
+            d3.select(this)
+                .attr("x", -w / 2).attr("y", -h / 2)
+                .attr("width", w).attr("height", h)
+                .attr("rx", Math.min(h / 2, 10));
+        });
     }
 
     // Nombre del nivel raíz en el breadcrumb
