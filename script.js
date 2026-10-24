@@ -297,12 +297,12 @@ function renderChart() {
             // Si es hoja y tiene exactamente 1 carrera seleccionada, se pinta de su color
             const matches = getMatchingSelectedCareers(d.data);
             if (matches.length === 1) return matches[0].color;
-            return "#ffffff";
+            return null;
         })
         .attr("stroke-width", d => {
             if (d.children) return null;
             const matches = getMatchingSelectedCareers(d.data);
-            return matches.length === 1 ? "4px" : "1.5px";
+            return matches.length === 1 ? "4px" : null;
         });
 
     // Anillos concéntricos finos (uno por carrera) cuando una ocupación tiene >= 2 carreras seleccionadas
@@ -520,7 +520,7 @@ function renderChart() {
         } else {
             const matches = getMatchingSelectedCareers(d.data);
             if (matches.length === 0) {
-                d3.select(this).select("circle").attr("stroke", "#0f172a").attr("stroke-width", "2.5px");
+                d3.select(this).select("circle").attr("stroke", "#1c1917").attr("stroke-width", "1px");
             }
         }
     })
@@ -530,7 +530,7 @@ function renderChart() {
         } else {
             const matches = getMatchingSelectedCareers(d.data);
             if (matches.length === 0) {
-                d3.select(this).select("circle").attr("stroke", "#ffffff").attr("stroke-width", "1.5px");
+                d3.select(this).select("circle").attr("stroke", null);
             } else if (matches.length === 1) {
                 d3.select(this).select("circle").attr("stroke", matches[0].color).attr("stroke-width", "4px");
             }
