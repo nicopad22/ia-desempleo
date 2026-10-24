@@ -34,15 +34,15 @@ const selectedCareers = new Map();
 // Etiquetas de los 4 tramos de exposición (de menor a mayor)
 const EXPOSURE_LABELS = ["Baja", "Media-baja", "Media-alta", "Alta"];
 
-// Escalas de color discretas (4 tramos) desde gris neutro hasta el color base de cada métrica.
+// Escalas de color discretas (4 tramos): de rosado/celeste suave a rojo/azul oscuro.
 // El dominio se fija una sola vez al cargar los datos (ver setColorScaleDomains).
 const scaleAutomatizacion = d3.scaleQuantize()
     .domain([0.0, 1.0])
-    .range(d3.quantize(d3.interpolateRgb("#e2e8f0", "#dc2626"), 4));
+    .range(["#fecaca", "#f87171", "#dc2626", "#7f1d1d"]);
 
 const scaleAumentacion = d3.scaleQuantize()
     .domain([0.0, 1.0])
-    .range(d3.quantize(d3.interpolateRgb("#e2e8f0", "#1d4ed8"), 4));
+    .range(["#bfdbfe", "#60a5fa", "#2563eb", "#1e3a8a"]);
 
 // El máximo se calcula sobre el dataset completo, así los colores no cambian al filtrar
 function setColorScaleDomains(treeData) {
@@ -264,11 +264,6 @@ function renderChart() {
     let focus = root;
     let view;
 
-    const depthColor = d3.scaleLinear()
-        .domain([0, 3])
-        .range(["#f1f5f9", "#cbd5e1"])
-        .interpolate(d3.interpolateHcl);
-
     // Contenedor de nodos
     const nodeGroup = svg.append("g");
 
@@ -281,7 +276,9 @@ function renderChart() {
     // Círculo principal de cada nodo
     const circle = node.append("circle")
         .attr("class", d => d.children ? "circle-parent" : "circle-leaf node-fill")
-        .attr("fill", d => d.children ? depthColor(d.depth) : getSemanticColor(d.data))
+        // Los grupos no tienen relleno (transparent sigue recibiendo clics), solo borde punteado
+        .attr("fill", d => d.children ? "transparent" : getSemanticColor(d.data))
+        .attr("stroke-dasharray", d => d.children ? "3 3" : null)
         .attr("stroke", d => {
             if (d.children) return "#94a3b8";
             // Si es hoja y tiene exactamente 1 carrera seleccionada, se pinta de su color
