@@ -263,11 +263,18 @@ function renderChart() {
     const root = pack(activeHierarchyData);
     currentFocusNode = root;
 
+    // Relleno de los grupos según la profundidad (como en el ejemplo de Observable),
+    // en grises cálidos para no confundirse con los colores de exposición
+    const depthColor = d3.scaleLinear()
+        .domain([0, 4])
+        .range(["#f5f4f0", "#c9c3b8"])
+        .interpolate(d3.interpolateHcl);
+
     const svg = d3.create("svg")
         .attr("viewBox", `-${width / 2} -${height / 2 + (TOP_OFFSET - BOTTOM_MARGIN) / 2} ${width} ${height}`)
         .attr("width", "100%")
         .attr("height", "100%")
-        .attr("style", "max-width: 100%; height: 100%; display: block; background: #f8fafc;");
+        .attr("style", `max-width: 100%; height: 100%; display: block; background: ${depthColor(0)};`);
 
     let focus = root;
     let view;
@@ -284,18 +291,16 @@ function renderChart() {
     // Círculo principal de cada nodo
     const circle = node.append("circle")
         .attr("class", d => d.children ? "circle-parent" : "circle-leaf node-fill")
-        // Los grupos no tienen relleno (transparent sigue recibiendo clics), solo borde punteado
-        .attr("fill", d => d.children ? "transparent" : getSemanticColor(d.data))
-        .attr("stroke-dasharray", d => d.children ? "3 3" : null)
+        .attr("fill", d => d.children ? depthColor(d.depth) : getSemanticColor(d.data))
         .attr("stroke", d => {
-            if (d.children) return "#94a3b8";
+            if (d.children) return null;
             // Si es hoja y tiene exactamente 1 carrera seleccionada, se pinta de su color
             const matches = getMatchingSelectedCareers(d.data);
             if (matches.length === 1) return matches[0].color;
             return "#ffffff";
         })
         .attr("stroke-width", d => {
-            if (d.children) return "1px";
+            if (d.children) return null;
             const matches = getMatchingSelectedCareers(d.data);
             return matches.length === 1 ? "4px" : "1.5px";
         });
@@ -511,7 +516,7 @@ function renderChart() {
     // Efectos de hover sobre los nodos
     node.on("mouseover", function(event, d) {
         if (d.children) {
-            d3.select(this).select("circle").attr("stroke", "#0f172a").attr("stroke-width", "2px");
+            d3.select(this).select("circle").attr("stroke", "#1c1917").attr("stroke-width", "1px");
         } else {
             const matches = getMatchingSelectedCareers(d.data);
             if (matches.length === 0) {
@@ -521,7 +526,7 @@ function renderChart() {
     })
     .on("mouseout", function(event, d) {
         if (d.children) {
-            d3.select(this).select("circle").attr("stroke", "#94a3b8").attr("stroke-width", "1px");
+            d3.select(this).select("circle").attr("stroke", null);
         } else {
             const matches = getMatchingSelectedCareers(d.data);
             if (matches.length === 0) {
