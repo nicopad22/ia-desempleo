@@ -283,23 +283,18 @@ function renderChart() {
             return matches.length === 1 ? "4px" : "1.5px";
         });
 
-    // Segmentos de arco multicolor cuando una ocupación tiene >= 2 carreras seleccionadas
-    const arcGenerator = d3.arc();
-
+    // Anillos concéntricos finos (uno por carrera) cuando una ocupación tiene >= 2 carreras seleccionadas
     node.each(function(d) {
         if (d.children) return;
         const matches = getMatchingSelectedCareers(d.data);
         if (matches.length >= 2) {
-            const m = matches.length;
-            const step = (2 * Math.PI) / m;
-            const gArcs = d3.select(this).append("g").attr("class", "multi-career-arcs");
-
+            const gRings = d3.select(this).append("g").attr("class", "career-rings");
             matches.forEach((carrera, i) => {
-                gArcs.append("path")
-                    .attr("class", "career-arc-segment")
-                    .attr("fill", carrera.color)
-                    .attr("data-index", i)
-                    .attr("data-total", m);
+                gRings.append("circle")
+                    .attr("fill", "none")
+                    .attr("stroke", carrera.color)
+                    .attr("stroke-width", 2.5)
+                    .attr("data-index", i);
             });
         }
     });
@@ -427,19 +422,9 @@ function renderChart() {
         circle.attr("r", d => Math.max(0, d.r * k));
 
         // Actualizar arcos de borde multicolor
-        node.selectAll(".multi-career-arcs path").each(function(d) {
-            const i = parseInt(d3.select(this).attr("data-index"), 10);
-            const m = parseInt(d3.select(this).attr("data-total"), 10);
-            const r = Math.max(0, d.r * k);
-            const step = (2 * Math.PI) / m;
-            const arcPath = arcGenerator({
-                innerRadius: Math.max(0, r - 3),
-                outerRadius: r + 1.5,
-                startAngle: i * step,
-                endAngle: (i + 1) * step
-            });
-            d3.select(this).attr("d", arcPath);
-        });
+        // Anillos de carreras: cada uno 3px más adentro que el anterior
+        node.selectAll(".career-rings circle")
+            .attr("r", function(d) { return Math.max(0, d.r * k - 1 - this.getAttribute("data-index") * 3); });
 
         label
             .attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
@@ -719,11 +704,13 @@ function renderSelectedCareers() {
         return;
     }
 
-    container.innerHTML = Array.from(selectedCareers.values()).map(c => `
+    container.innerHTML = `
+        <p class="career-border-hint">El color de cada carrera es el borde de sus ocupaciones en el gráfico. Si una ocupación es de varias carreras, tiene un anillo por cada una.</p>
+    ` + Array.from(selectedCareers.values()).map(c => `
         <div class="career-card" data-id="${c.id}">
             <div class="career-card-header">
                 <div class="career-title-group">
-                    <span class="career-color-dot" style="background-color: ${c.color};"></span>
+                    <span class="career-color-dot" style="border-color: ${c.color};" title="Borde en el gráfico"></span>
                     <span class="career-name">${c.nombre}</span>
                 </div>
                 <button class="btn-remove-career" onclick="removeCareer('${c.id}')" title="Quitar">&times;</button>

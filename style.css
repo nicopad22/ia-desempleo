@@ -672,11 +672,18 @@ html, body {
     flex: 1;
 }
 
+/* Anillo del color de la carrera: igual al borde que tienen sus ocupaciones en el gráfico */
 .career-color-dot {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
+    border: 3px solid;
     flex-shrink: 0;
+}
+
+.career-border-hint {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
 }
 
 .career-name {
@@ -912,7 +919,7 @@ html, body {
     color: white;
 }
 
-.multi-career-arcs, .career-arc-segment {
+.career-rings {
     pointer-events: none;
 }
 
