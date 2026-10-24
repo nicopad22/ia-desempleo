@@ -921,6 +921,12 @@ circle {
     /* No transición de fill para permitir cambio instantáneo */
 }
 
+/* Tramo y puntaje bajo el nombre de la ocupación (vista filtrada) */
+.metric-line {
+    font-size: 0.78em;
+    font-weight: 500;
+}
+
 .node--dimmed {
     opacity: 0.12 !important;
 }

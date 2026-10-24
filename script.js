@@ -65,6 +65,13 @@ function getSemanticColor(leafData) {
         : scaleAumentacion(score);
 }
 
+// Tramo y puntaje de la métrica activa (ej: "Media-baja · 0.21")
+function getMetricText(leafData) {
+    const isAuto = activeMetric === 'automatizacion';
+    const score = (isAuto ? leafData.automatizacion_score : leafData.aumentacion_score) ?? 0;
+    return `${getExposureLabel(score, isAuto ? scaleAutomatizacion : scaleAumentacion)} · ${score.toFixed(2)}`;
+}
+
 // Asignar el siguiente color disponible a una carrera
 function getNextCareerColor() {
     const usedColors = new Set(Array.from(selectedCareers.values()).map(c => c.color));
@@ -384,9 +391,11 @@ function renderChart() {
         .each(function(d) {
             const el = d3.select(this);
             const lines = wrapTextToLines(d.data.name || "");
-            d._lines = lines;
-            d._maxLineLen = Math.max(1, ...lines.map(l => l.length));
-            const n = lines.length;
+            // En la vista filtrada, las ocupaciones muestran además su tramo y puntaje
+            const showMetric = !d.children && visibleIscoCodes !== null;
+            d._lines = showMetric ? [...lines, getMetricText(d.data)] : lines;
+            d._maxLineLen = Math.max(1, ...d._lines.map(l => l.length));
+            const n = d._lines.length;
             if (n === 0) return;
 
             lines.forEach((lineText, idx) => {
@@ -399,6 +408,14 @@ function renderChart() {
                     .attr("dy", dy)
                     .text(lineText);
             });
+
+            if (showMetric) {
+                el.append("tspan")
+                    .attr("class", "metric-line")
+                    .attr("x", 0)
+                    .attr("dy", "1.3em")
+                    .text(getMetricText(d.data));
+            }
         });
 
     // Función de actualización de coordenadas, radios y tamaño de texto dinámico
@@ -584,6 +601,8 @@ function renderBreadcrumb(focusNode, rootLabel, onSelect) {
 function updateColorScale() {
     d3.selectAll(".circle-leaf")
         .attr("fill", d => getSemanticColor(d.data));
+    d3.selectAll(".metric-line")
+        .text(d => getMetricText(d.data));
 
     renderLegend();
 }
