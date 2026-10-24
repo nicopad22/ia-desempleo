@@ -14,18 +14,18 @@ let FILTER_MODE = 'repack';
 // Métrica de color activa: 'automatizacion' | 'aumentacion'
 let activeMetric = 'automatizacion';
 
-// Paleta de colores distintivos para las carreras seleccionadas
+// Paleta de colores para las carreras seleccionadas: tonos tierra, violeta y verdes oscuros
+// que no compiten con la escala roja (automatización) ni con la azul (potenciación)
 const CAREER_PALETTE = [
-    "#d4eb25", // Azul eléctrico
-    "#00ffaa", // Rojo
-    "#16a34a", // Verde esmeralda
-    "#9333ea", // Púrpura
-    "#ea580c", // Naranja
-    "#0891b2", // Cian
-    "#db2777", // Magenta
-    "#d97706", // Ámbar
-    "#4f46e5", // Índigo
-    "#059669"  // Esmeralda oscuro
+    "#6d28d9", // Violeta
+    "#15803d", // Verde oscuro
+    "#b45309", // Ocre
+    "#0f766e", // Verde azulado oscuro
+    "#86198f", // Ciruela
+    "#78350f", // Café
+    "#65a30d", // Verde oliva
+    "#ca8a04", // Mostaza
+    "#44403c"  // Gris piedra
 ];
 
 // Estado de selección de carreras: Map(id -> { ...carrera, color })
@@ -262,7 +262,8 @@ function renderChart() {
 
     const pack = data => d3.pack()
         .size([size, size])
-        .padding(4)
+        // Más separación cuando hay carreras, para que quepan los anillos de color
+        .padding(visibleIscoCodes === null ? 3 : 12)
         (d3.hierarchy(data)
             .sum(d => d.value || 0)
             .sort((a, b) => (b.value || 0) - (a.value || 0)));
@@ -299,33 +300,21 @@ function renderChart() {
     const circle = node.append("circle")
         .attr("class", d => d.children ? "circle-parent" : "circle-leaf node-fill")
         .attr("fill", d => d.children ? depthColor(d.depth) : getSemanticColor(d.data))
-        .attr("stroke", d => {
-            if (d.children) return null;
-            // Si es hoja y tiene exactamente 1 carrera seleccionada, se pinta de su color
-            const matches = getMatchingSelectedCareers(d.data);
-            if (matches.length === 1) return matches[0].color;
-            return null;
-        })
-        .attr("stroke-width", d => {
-            if (d.children) return null;
-            const matches = getMatchingSelectedCareers(d.data);
-            return matches.length === 1 ? "4px" : null;
-        });
+        .attr("stroke-width", 1);
 
-    // Anillos concéntricos finos (uno por carrera) cuando una ocupación tiene >= 2 carreras seleccionadas
+    // Anillos finos alrededor de la ocupación, uno por cada carrera seleccionada relacionada
     node.each(function(d) {
         if (d.children) return;
         const matches = getMatchingSelectedCareers(d.data);
-        if (matches.length >= 2) {
-            const gRings = d3.select(this).append("g").attr("class", "career-rings");
-            matches.forEach((carrera, i) => {
-                gRings.append("circle")
-                    .attr("fill", "none")
-                    .attr("stroke", carrera.color)
-                    .attr("stroke-width", 2.5)
-                    .attr("data-index", i);
-            });
-        }
+        if (matches.length === 0) return;
+        const gRings = d3.select(this).append("g").attr("class", "career-rings");
+        matches.forEach((carrera, i) => {
+            gRings.append("circle")
+                .attr("fill", "none")
+                .attr("stroke", carrera.color)
+                .attr("stroke-width", 2)
+                .attr("data-index", i);
+        });
     });
 
     // Función para partir textos en múltiples líneas completas (sin cortar con "...")
@@ -449,9 +438,9 @@ function renderChart() {
         node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
         circle.attr("r", d => Math.max(0, d.r * k));
 
-        // Anillos de carreras: cada uno 3px más adentro que el anterior
+        // Anillos de carreras: el primero a 3px del círculo y cada uno 3.5px más afuera
         node.selectAll(".career-rings circle")
-            .attr("r", function(d) { return Math.max(0, d.r * k - 1 - this.getAttribute("data-index") * 3); });
+            .attr("r", function(d) { return Math.max(0, d.r * k) + 3 + this.getAttribute("data-index") * 3.5; });
 
         label
             .attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
@@ -514,29 +503,9 @@ function renderChart() {
             });
     }
 
-    // Efectos de hover sobre los nodos
-    node.on("mouseover", function(event, d) {
-        if (d.children) {
-            d3.select(this).select("circle").attr("stroke", "#1c1917").attr("stroke-width", "1px");
-        } else {
-            const matches = getMatchingSelectedCareers(d.data);
-            if (matches.length === 0) {
-                d3.select(this).select("circle").attr("stroke", "#1c1917").attr("stroke-width", "1px");
-            }
-        }
-    })
-    .on("mouseout", function(event, d) {
-        if (d.children) {
-            d3.select(this).select("circle").attr("stroke", null);
-        } else {
-            const matches = getMatchingSelectedCareers(d.data);
-            if (matches.length === 0) {
-                d3.select(this).select("circle").attr("stroke", null);
-            } else if (matches.length === 1) {
-                d3.select(this).select("circle").attr("stroke", matches[0].color).attr("stroke-width", "4px");
-            }
-        }
-    });
+    // Borde fino oscuro al pasar el mouse, como en el ejemplo de Observable
+    node.on("mouseover", function() { d3.select(this).select("circle").attr("stroke", "#1c1917"); })
+        .on("mouseout", function() { d3.select(this).select("circle").attr("stroke", null); });
 
     // Navegación como en el ejemplo de Observable: clic en un grupo hace zoom directo a él.
     // Clic en una ocupación: si es hija del foco (su nombre está visible) se abre el detalle;
