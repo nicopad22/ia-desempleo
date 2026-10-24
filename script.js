@@ -351,8 +351,6 @@ function renderChart() {
 
     // Límite de radio en pantalla para evitar que una única ocupación ocupe toda la ventana
     const MAX_LEAF_SCREEN_RADIUS = Math.min(size * 0.22, 135);
-    // Radio mínimo en pantalla a partir del cual una ocupación muestra su título y abre detalle directo
-    const DIRECT_LEAF_MIN_RADIUS = 34;
 
     function getTargetView(targetNode) {
         const leaves = targetNode.leaves();
@@ -500,7 +498,7 @@ function renderChart() {
         label.style("display", dNode => (isLabelVisible(dNode, focus) || isLabelVisible(dNode, prevFocus)) ? "inline" : "none");
 
         const transition = svg.transition()
-            .duration(event && event.altKey ? 5000 : 700)
+            .duration(event && event.altKey ? 7500 : 750)
             .tween("zoom", () => {
                 const i = d3.interpolateZoom(view, targetView);
                 return t => zoomTo(i(t));
@@ -540,44 +538,18 @@ function renderChart() {
         }
     });
 
-    // Navegación: acceso directo al detalle si la ocupación es suficientemente grande, o progresión por nivel
+    // Navegación como en el ejemplo de Observable: clic en un grupo hace zoom directo a él.
+    // Clic en una ocupación: si es hija del foco (su nombre está visible) se abre el detalle;
+    // si no, se hace zoom a su grupo. Clic en el grupo con foco sale un nivel.
     node.on("click", function(event, d) {
         event.stopPropagation();
-        const currentK = size / view[2];
-
-        // 0. Si es una ocupación (hoja) suficientemente grande o hija directa del foco, abrir su detalle directo
-        if (!d.children && (d.parent === focus || d.r * currentK >= DIRECT_LEAF_MIN_RADIUS)) {
-            const parentName = d.parent ? d.parent.data.name : "Gran Grupo";
-            openOccupationModal(d.data, parentName);
-            return;
-        }
-
-        // 1. Si se hace clic en la categoría que YA está en foco -> retroceder al nivel anterior
-        if (d === focus) {
-            if (focus.parent) {
-                zoom(event, focus.parent);
-            }
-            return;
-        }
-
-        // 2. Si d es descendiente de focus, avanzar solo un nivel hacia d
-        let nextStep = d;
-        while (nextStep.parent && nextStep.parent !== focus) {
-            nextStep = nextStep.parent;
-        }
-
-        if (nextStep.parent === focus) {
-            if (nextStep.children) {
-                zoom(event, nextStep);
-            } else {
-                openOccupationModal(nextStep.data, focus.data.name);
-            }
-            return;
-        }
-
-        // 3. Si d está en otra rama, zoom al padre de d
-        if (d.parent) {
-            zoom(event, d.parent);
+        if (!d.children) {
+            if (d.parent === focus) openOccupationModal(d.data, focus.data.name);
+            else zoom(event, d.parent);
+        } else if (d === focus) {
+            if (focus.parent) zoom(event, focus.parent);
+        } else {
+            zoom(event, d);
         }
     });
 
