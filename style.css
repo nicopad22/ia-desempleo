@@ -117,16 +117,16 @@ html, body {
     box-shadow: var(--shadow-sm);
 }
 
-/* Tooltips explicativos de Automatización y Aumentación */
+/* Tooltips de Automatización y Potenciación: se muestran bajo la barra superior completa
+   (el contenedor de referencia es .floating-header), para no tapar la leyenda */
 .tooltip-wrapper {
-    position: relative;
     display: inline-flex;
 }
 
 .metric-tooltip {
     display: none;
     position: absolute;
-    top: calc(100% + 12px);
+    top: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
     width: 380px;
@@ -135,7 +135,7 @@ html, body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
-    padding: 16px 18px;
+    padding: 14px 16px;
     color: var(--text-primary);
     font-size: 0.9rem;
     line-height: 1.5;
@@ -143,14 +143,14 @@ html, body {
     text-align: left;
 }
 
-/* Puente invisible superior para mantener abierto el tooltip al mover el mouse hacia el enlace */
+/* Puente invisible desde el botón hasta el tooltip, para que no se cierre al mover el mouse hacia el enlace */
 .metric-tooltip::before {
     content: "";
     position: absolute;
-    top: -14px;
+    top: -100px;
     left: 0;
     right: 0;
-    height: 14px;
+    height: 100px;
 }
 
 .tooltip-wrapper:hover .metric-tooltip,
@@ -165,43 +165,10 @@ html, body {
     margin-bottom: 6px;
 }
 
-.tooltip-subtitle {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-top: 10px;
-    margin-bottom: 4px;
-}
-
 .tooltip-desc {
     font-size: 0.88rem;
     color: var(--text-secondary);
-    margin-bottom: 6px;
-}
-
-.tooltip-color-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 12px;
-}
-
-.tooltip-color-list li {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 0.86rem;
-    color: var(--text-secondary);
-}
-
-.color-swatch {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 1px solid #cbd5e1;
-    flex-shrink: 0;
-    margin-top: 3px;
+    margin-bottom: 8px;
 }
 
 .tooltip-link {
@@ -238,6 +205,7 @@ html, body {
 }
 
 .legend-step {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -245,6 +213,29 @@ html, body {
     width: 60px;
     font-size: 0.62rem;
     color: var(--text-secondary);
+}
+
+/* Mini-tooltip de una línea bajo cada bloque de la leyenda (texto en data-tip) */
+.legend-step:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--text-primary);
+    color: white;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+}
+
+.legend-scale-note {
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    text-align: right;
 }
 
 .legend-swatch {
@@ -331,7 +322,7 @@ html, body {
 /* Breadcrumb de navegación del zoom, bajo el encabezado */
 .breadcrumb {
     position: fixed;
-    top: 146px;
+    top: 159px;
     left: 50%;
     transform: translateX(-50%);
     max-width: min(660px, calc(100vw - 32px));

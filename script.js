@@ -34,6 +34,22 @@ const selectedCareers = new Map();
 // Etiquetas de los 4 tramos de exposición (de menor a mayor)
 const EXPOSURE_LABELS = ["Baja", "Media-baja", "Media-alta", "Alta"];
 
+// Significado de cada tramo, para el mini-tooltip de la leyenda
+const EXPOSURE_MEANINGS = {
+    automatizacion: [
+        "La IA podría hacer muy pocas tareas",
+        "La IA podría hacer algunas tareas",
+        "La IA podría hacer varias tareas",
+        "La IA podría hacer muchas tareas"
+    ],
+    aumentacion: [
+        "La IA ayudaría en muy pocas tareas",
+        "La IA podría ayudar en algunas tareas",
+        "La IA podría ayudar en varias tareas",
+        "La IA podría ayudar en muchas tareas"
+    ]
+};
+
 // Escalas de color discretas (4 tramos): de rosado/celeste suave a rojo/azul oscuro.
 // El dominio se fija una sola vez al cargar los datos (ver setColorScaleDomains).
 const scaleAutomatizacion = d3.scaleQuantize()
@@ -237,7 +253,7 @@ function renderChart() {
     // el gráfico empieza bajo el encabezado y el breadcrumb para que ninguna quede tapada.
     // En pantallas anchas se deja libre el ancho de los paneles laterales (260px + márgenes).
     const isFilteredView = FILTER_MODE === 'repack' && visibleIscoCodes !== null;
-    const TOP_OFFSET = isFilteredView ? 180 : 60;
+    const TOP_OFFSET = isFilteredView ? 193 : 60;
     const BOTTOM_MARGIN = 12;
     const size = Math.min(width > 1000 ? width - 2 * 292 : width, height - TOP_OFFSET - BOTTOM_MARGIN);
 
@@ -583,12 +599,17 @@ function renderLegend() {
     document.getElementById("legend-title").textContent = isAuto
         ? "¿Cuánto podría la IA reemplazar tareas de este trabajo?"
         : "¿Cuánto podría la IA ayudar en este trabajo?";
-    document.getElementById("legend-steps").innerHTML = scale.range().map((color, i) => `
-        <div class="legend-step">
+    // Cada bloque muestra al pasar el mouse su rango real (calculado desde la escala) y su significado
+    document.getElementById("legend-steps").innerHTML = scale.range().map((color, i) => {
+        const [from, to] = scale.invertExtent(color);
+        const tip = `${EXPOSURE_LABELS[i]} · ${from.toFixed(2)}–${to.toFixed(2)} · ${EXPOSURE_MEANINGS[activeMetric][i]}`;
+        return `
+        <div class="legend-step" data-tip="${tip}">
             <span class="legend-swatch" style="background-color: ${color};"></span>
             <span>${EXPOSURE_LABELS[i]}</span>
         </div>
-    `).join("");
+    `;
+    }).join("");
 }
 
 // =============================================================================
@@ -883,6 +904,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 applyChileanNames(ISCO_HIERARCHY_DATA);
                 CATALOGO_CARRERAS = await cRes.json();
                 setColorScaleDomains(ISCO_HIERARCHY_DATA);
+                renderLegend();
                 renderChart();
             }
         } catch (e) {
