@@ -209,7 +209,7 @@ function renderChart() {
     const width = window.innerWidth;
     const height = window.innerHeight;
     // Área libre para el gráfico: bajo el encabezado y entre los paneles laterales
-    const TOP_OFFSET = 130;
+    const TOP_OFFSET = 175;
     const size = Math.min(width > 1000 ? width - 680 : width, height - TOP_OFFSET);
 
     const visibleIscoCodes = getVisibleIscoCodes();
@@ -596,7 +596,9 @@ function updateColorScale() {
 function renderLegend() {
     const isAuto = activeMetric === 'automatizacion';
     const scale = isAuto ? scaleAutomatizacion : scaleAumentacion;
-    document.getElementById("legend-title").textContent = `Exposición a la IA (${isAuto ? "Automatización" : "Potenciación"})`;
+    document.getElementById("legend-title").textContent = isAuto
+        ? "¿Cuánto podría la IA reemplazar tareas de este trabajo?"
+        : "¿Cuánto podría la IA ayudar en este trabajo?";
     document.getElementById("legend-steps").innerHTML = scale.range().map((color, i) => `
         <div class="legend-step">
             <span class="legend-swatch" style="background-color: ${color};"></span>
