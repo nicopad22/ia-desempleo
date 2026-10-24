@@ -508,6 +508,14 @@ html, body {
     font-weight: 700;
 }
 
+.career-steps li.done {
+    color: #16a34a;
+}
+
+.career-steps li.done::after {
+    content: " ✓";
+}
+
 .career-hint {
     margin-top: 8px;
     padding: 6px 8px;

@@ -88,6 +88,16 @@ function getNextCareerColor() {
 let CATALOGO_CARRERAS = [];
 let ISCO_HIERARCHY_DATA = null;
 
+// Títulos ISCO con traducciones poco naturales en Chile -> nombre que se muestra
+const NOMBRES_CHILE = {
+    "Profesionales de partería": "Matronas y matrones"
+};
+
+function applyChileanNames(node) {
+    if (NOMBRES_CHILE[node.name]) node.name = NOMBRES_CHILE[node.name];
+    (node.children || []).forEach(applyChileanNames);
+}
+
 // =============================================================================
 // 3. UTILIDADES DE BÚSQUEDA Y FILTRADO
 // =============================================================================
@@ -122,6 +132,11 @@ function searchCareers(query) {
         .filter(item => item.r >= 0)
         .sort((a, b) => a.r - b.r)
         .map(item => item.carrera);
+}
+
+// "1 ocupación" / "N ocupaciones"
+function formatOcupaciones(n) {
+    return n === 1 ? "1 ocupación" : `${n} ocupaciones`;
 }
 
 function getVisibleIscoCodes() {
@@ -234,7 +249,7 @@ function renderChart() {
     document.getElementById("chart-notice").classList.toggle("hidden", !showNotice);
     document.getElementById("chart-notice-text").textContent = visibleCount === 0
         ? "Ninguna ocupación del gráfico está relacionada con tus carreras."
-        : `Solo ${visibleCount === 1 ? "hay 1 ocupación relacionada" : `hay ${visibleCount} ocupaciones relacionadas`} con tus carreras.`;
+        : `Solo hay ${formatOcupaciones(visibleCount)} relacionada${visibleCount === 1 ? "" : "s"} con tus carreras.`;
 
     const pack = data => d3.pack()
         .size([size, size])
@@ -701,10 +716,7 @@ function renderSelectedCareers() {
     countEl.textContent = selectedCareers.size;
     clearBtn.style.display = selectedCareers.size > 0 ? "inline-block" : "none";
 
-    // Guía de pasos: sin carreras se resalta el paso 1; con carreras, los pasos 2 y 3
-    document.querySelectorAll("#career-steps li").forEach(li => {
-        li.classList.toggle("active", (li.dataset.step === "1") === (selectedCareers.size === 0));
-    });
+    updateCareerSteps();
     // Aviso tras agregar la primera carrera (solo cuando el gráfico se filtra)
     document.getElementById("career-added-hint").classList.toggle("hidden", selectedCareers.size !== 1 || FILTER_MODE !== 'repack');
 
@@ -730,13 +742,28 @@ function renderSelectedCareers() {
                 <button class="btn-remove-career" onclick="removeCareer('${c.id}')" title="Quitar">&times;</button>
             </div>
             <div class="career-card-meta">
-                <span>${c.nivel} · ${c.ocupaciones.length} ocupaciones</span>
+                <span>${c.nivel} · ${formatOcupaciones(c.ocupaciones.length)}</span>
                 <a href="https://www.mifuturo.cl/buscador-de-estadisticas-por-carrera/" target="_blank" rel="noopener noreferrer" class="career-mifuturo-link">
                     MiFuturo.cl &nearr;
                 </a>
             </div>
         </div>
     `).join("");
+}
+
+// Guía de pasos: el paso 1 se completa al elegir una carrera; los pasos 2 y 3, al abrir
+// el detalle de una ocupación. Se resaltan los pasos que faltan por hacer.
+let hasOpenedDetail = false;
+
+function updateCareerSteps() {
+    const hasCareers = selectedCareers.size > 0;
+    if (!hasCareers) hasOpenedDetail = false;
+    const done = { 1: hasCareers, 2: hasOpenedDetail, 3: hasOpenedDetail };
+    document.querySelectorAll("#career-steps li").forEach(li => {
+        const step = li.dataset.step;
+        li.classList.toggle("done", done[step]);
+        li.classList.toggle("active", !done[step] && (step === "1") === !hasCareers);
+    });
 }
 
 function toggleCareerFromModal(careerId, btnEl) {
@@ -806,6 +833,11 @@ function openOccupationModal(leafData, groupName) {
 
     backdrop.classList.remove("hidden");
     modal.classList.remove("hidden");
+
+    if (selectedCareers.size > 0) {
+        hasOpenedDetail = true;
+        updateCareerSteps();
+    }
 }
 
 function closeOccupationModal() {
@@ -891,6 +923,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ]);
             if (hRes.ok && cRes.ok) {
                 ISCO_HIERARCHY_DATA = await hRes.json();
+                applyChileanNames(ISCO_HIERARCHY_DATA);
                 CATALOGO_CARRERAS = await cRes.json();
                 setColorScaleDomains(ISCO_HIERARCHY_DATA);
                 renderChart();
