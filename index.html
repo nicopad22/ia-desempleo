@@ -14,74 +14,72 @@
 
     <!-- Barra Superior Flotante: Título, Escala de Color y Leyenda -->
     <header class="floating-header">
-        <h1 class="app-title">IA y Mercado Laboral</h1>
-        <div class="segmented-control">
-            <div class="tooltip-wrapper">
-                <button id="btn-automatizacion" class="control-btn active">
-                    Automatización
-                </button>
-                <div class="metric-tooltip" role="tooltip">
-                    <p class="tooltip-title">Automatización (Sustitución de tareas)</p>
-                    <p class="tooltip-desc">
-                        Mide la probabilidad de que las tareas de una ocupación sean <strong>realizadas directamente o reemplazadas</strong> por sistemas de IA generativa, reduciendo la necesidad de intervención humana.
-                    </p>
-                    <p class="tooltip-subtitle">¿Qué significa la escala?</p>
-                    <p class="tooltip-desc">
-                        El índice teórico de la OIT va de <strong>0.0 a 1.0</strong> (proporción de tareas expuestas a automatización). Para maximizar el contraste visual sin que los colores se vean deslavados, la escala se calibra al <strong>máximo real observado</strong> en las ocupaciones mostradas (<strong id="tooltip-auto-max">0.41</strong>).
-                    </p>
-                    <p class="tooltip-subtitle">Mapeo de colores</p>
-                    <ul class="tooltip-color-list">
-                        <li>
-                            <span class="color-swatch" style="background-color: #e2e8f0;"></span>
-                            <span><strong>Gris neutro (0.0):</strong> Nula o muy baja exposición a la sustitución de tareas por IA.</span>
-                        </li>
-                        <li>
-                            <span class="color-swatch" style="background-color: #dc2626;"></span>
-                            <span><strong>Rojo intenso (máx. observado):</strong> Mayor proporción de tareas rutinarias o codificables susceptibles de ser automatizadas.</span>
-                        </li>
-                    </ul>
-                    <a class="tooltip-link" href="https://www.ilo.org/publications/generative-ai-and-jobs-refined-global-index-occupational-exposure" target="_blank" rel="noopener noreferrer">
-                        Ver paper original: OIT Working Paper 140 (2025) &rarr;
-                    </a>
+        <div class="header-row">
+            <h1 class="app-title">IA y Mercado Laboral</h1>
+            <div class="segmented-control">
+                <div class="tooltip-wrapper">
+                    <button id="btn-automatizacion" class="control-btn active">
+                        Automatización
+                    </button>
+                    <div class="metric-tooltip" role="tooltip">
+                        <p class="tooltip-title">Automatización (Sustitución de tareas)</p>
+                        <p class="tooltip-desc">
+                            Mide la probabilidad de que las tareas de una ocupación sean <strong>realizadas directamente o reemplazadas</strong> por sistemas de IA generativa, reduciendo la necesidad de intervención humana.
+                        </p>
+                        <p class="tooltip-subtitle">Mapeo de colores</p>
+                        <ul class="tooltip-color-list">
+                            <li>
+                                <span class="color-swatch" style="background-color: #e2e8f0;"></span>
+                                <span><strong>Gris neutro (baja exposición):</strong> Nula o muy baja exposición a la sustitución de tareas por IA.</span>
+                            </li>
+                            <li>
+                                <span class="color-swatch" style="background-color: #dc2626;"></span>
+                                <span><strong>Rojo intenso (alta exposición):</strong> Mayor proporción de tareas rutinarias o codificables susceptibles de ser automatizadas.</span>
+                            </li>
+                        </ul>
+                        <a class="tooltip-link" href="https://www.ilo.org/publications/generative-ai-and-jobs-refined-global-index-occupational-exposure" target="_blank" rel="noopener noreferrer">
+                            Ver paper original: OIT Working Paper 140 (2025) &rarr;
+                        </a>
+                    </div>
+                </div>
+                <div class="tooltip-wrapper">
+                    <button id="btn-aumentacion" class="control-btn">
+                        Potenciación
+                    </button>
+                    <div class="metric-tooltip" role="tooltip">
+                        <p class="tooltip-title">Potenciación (Complementariedad con IA)</p>
+                        <p class="tooltip-desc">
+                            Mide el potencial de que la IA generativa funcione como <strong>herramienta de apoyo</strong> que potencia la productividad y calidad del trabajo humano, sin sustituir al trabajador. (En el informe OIT: "augmentation").
+                        </p>
+                        <p class="tooltip-subtitle">Mapeo de colores</p>
+                        <ul class="tooltip-color-list">
+                            <li>
+                                <span class="color-swatch" style="background-color: #e2e8f0;"></span>
+                                <span><strong>Gris neutro (baja exposición):</strong> Bajo potencial de uso directo de IA generativa en las tareas cotidianas.</span>
+                            </li>
+                            <li>
+                                <span class="color-swatch" style="background-color: #1d4ed8;"></span>
+                                <span><strong>Azul marino (alta exposición):</strong> Alta complementariedad; la IA asiste fuertemente el análisis, redacción o resolución de problemas.</span>
+                            </li>
+                        </ul>
+                        <a class="tooltip-link" href="https://www.ilo.org/publications/generative-ai-and-jobs-refined-global-index-occupational-exposure" target="_blank" rel="noopener noreferrer">
+                            Ver paper original: OIT Working Paper 140 (2025) &rarr;
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div class="tooltip-wrapper">
-                <button id="btn-aumentacion" class="control-btn">
-                    Aumentación
-                </button>
-                <div class="metric-tooltip" role="tooltip">
-                    <p class="tooltip-title">Aumentación (Complementariedad con IA)</p>
-                    <p class="tooltip-desc">
-                        Mide el potencial de que la IA generativa funcione como <strong>herramienta de apoyo</strong> que potencia la productividad y calidad del trabajo humano, sin sustituir al trabajador.
-                    </p>
-                    <p class="tooltip-subtitle">¿Qué significa la escala?</p>
-                    <p class="tooltip-desc">
-                        El índice teórico de la OIT va de <strong>0.0 a 1.0</strong> (grado de sinergia entre tareas humanas e IA). La escala de color se calibra dinámicamente hasta el <strong>máximo real observado</strong> en los datos (<strong id="tooltip-aug-max">0.90</strong>) para distinguir mejor las diferencias entre ocupaciones.
-                    </p>
-                    <p class="tooltip-subtitle">Mapeo de colores</p>
-                    <ul class="tooltip-color-list">
-                        <li>
-                            <span class="color-swatch" style="background-color: #e2e8f0;"></span>
-                            <span><strong>Gris neutro (0.0):</strong> Bajo potencial de uso directo de IA generativa en las tareas cotidianas.</span>
-                        </li>
-                        <li>
-                            <span class="color-swatch" style="background-color: #1d4ed8;"></span>
-                            <span><strong>Azul marino (máx. observado):</strong> Alta complementariedad; la IA asiste fuertemente el análisis, redacción o resolución de problemas.</span>
-                        </li>
-                    </ul>
-                    <a class="tooltip-link" href="https://www.ilo.org/publications/generative-ai-and-jobs-refined-global-index-occupational-exposure" target="_blank" rel="noopener noreferrer">
-                        Ver paper original: OIT Working Paper 140 (2025) &rarr;
-                    </a>
-                </div>
+            <div class="legend-container">
+                <span id="legend-title" class="legend-title">Exposición a la IA</span>
+                <div id="legend-steps" class="legend-steps"></div>
             </div>
         </div>
-        <div class="legend-container">
-            <div class="legend-labels">
-                <span id="legend-min-val">0.0</span>
-                <span id="legend-title">Automatización</span>
-                <span id="legend-max-val">0.41</span>
-            </div>
-            <div id="legend-bar" class="legend-bar automatizacion"></div>
+        <!-- Explicación permanente de la codificación visual -->
+        <div class="legend-encoding">
+            <svg width="28" height="20" aria-hidden="true">
+                <circle cx="6" cy="14" r="4"></circle>
+                <circle cx="19" cy="10" r="8"></circle>
+            </svg>
+            <span>Cada círculo = una ocupación · Tamaño = cuántas personas trabajan en ella · Color = exposición a la IA</span>
         </div>
     </header>
 
@@ -155,7 +153,7 @@
                     <div class="mini-bar-track"><div id="modal-auto-bar" class="mini-bar auto"></div></div>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-label">Puntaje Aumentación</span>
+                    <span class="metric-label">Puntaje Potenciación</span>
                     <strong id="modal-aug-score" class="metric-value">-</strong>
                     <div class="mini-bar-track"><div id="modal-aug-bar" class="mini-bar aug"></div></div>
                 </div>

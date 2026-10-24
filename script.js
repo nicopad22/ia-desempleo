@@ -31,45 +31,29 @@ const CAREER_PALETTE = [
 // Estado de selección de carreras: Map(id -> { ...carrera, color })
 const selectedCareers = new Map();
 
-// Límites máximos calculados según el máximo real observado en los datos (OIT WP 140)
-// para asegurar que los círculos muestren contraste pleno y no se vean deslavados
-let maxAutomatizacion = 0.41;
-let maxAumentacion = 0.90;
+// Etiquetas de los 4 tramos de exposición (de menor a mayor)
+const EXPOSURE_LABELS = ["Baja", "Media-baja", "Media-alta", "Alta"];
 
-// Escalas de Color Semánticas Monocromáticas (OIT WP 140) calibradas al máximo real
-const scaleAutomatizacion = d3.scaleLinear()
-    .domain([0.0, maxAutomatizacion])
-    .range(["#e2e8f0", "#dc2626"])
-    .interpolate(d3.interpolateRgb);
+// Escalas de color discretas (4 tramos) desde gris neutro hasta el color base de cada métrica.
+// El dominio se fija una sola vez al cargar los datos (ver setColorScaleDomains).
+const scaleAutomatizacion = d3.scaleQuantize()
+    .domain([0.0, 1.0])
+    .range(d3.quantize(d3.interpolateRgb("#e2e8f0", "#dc2626"), 4));
 
-const scaleAumentacion = d3.scaleLinear()
-    .domain([0.0, maxAumentacion])
-    .range(["#e2e8f0", "#1d4ed8"])
-    .interpolate(d3.interpolateRgb);
+const scaleAumentacion = d3.scaleQuantize()
+    .domain([0.0, 1.0])
+    .range(d3.quantize(d3.interpolateRgb("#e2e8f0", "#1d4ed8"), 4));
 
-function updateColorScaleDomains(treeData) {
-    if (!treeData) return;
+// El máximo se calcula sobre el dataset completo, así los colores no cambian al filtrar
+function setColorScaleDomains(treeData) {
     const leaves = getAllLeaves(treeData);
-    if (leaves.length > 0) {
-        const autoMax = d3.max(leaves, d => d.automatizacion_score ?? 0);
-        const augMax = d3.max(leaves, d => d.aumentacion_score ?? 0);
-        if (autoMax) maxAutomatizacion = autoMax;
-        if (augMax) maxAumentacion = augMax;
-    }
-    scaleAutomatizacion.domain([0.0, maxAutomatizacion]);
-    scaleAumentacion.domain([0.0, maxAumentacion]);
+    scaleAutomatizacion.domain([0.0, d3.max(leaves, d => d.automatizacion_score ?? 0)]);
+    scaleAumentacion.domain([0.0, d3.max(leaves, d => d.aumentacion_score ?? 0)]);
+}
 
-    // Actualizar valor numérico máximo en la leyenda flotante y en los tooltips
-    const legendMax = document.getElementById("legend-max-val");
-    if (legendMax) {
-        legendMax.textContent = activeMetric === 'automatizacion' 
-            ? maxAutomatizacion.toFixed(2) 
-            : maxAumentacion.toFixed(2);
-    }
-    const tooltipAutoMax = document.getElementById("tooltip-auto-max");
-    if (tooltipAutoMax) tooltipAutoMax.textContent = maxAutomatizacion.toFixed(2);
-    const tooltipAugMax = document.getElementById("tooltip-aug-max");
-    if (tooltipAugMax) tooltipAugMax.textContent = maxAumentacion.toFixed(2);
+// Etiqueta del tramo de un puntaje (ej: "Media-alta")
+function getExposureLabel(score, scale) {
+    return EXPOSURE_LABELS[scale.range().indexOf(scale(score))];
 }
 
 function getSemanticColor(leafData) {
@@ -229,7 +213,9 @@ function renderChart() {
 
     const width = window.innerWidth;
     const height = window.innerHeight;
-    const size = Math.min(width, height);
+    // Área libre para el gráfico: bajo el encabezado y entre los paneles laterales
+    const TOP_OFFSET = 100;
+    const size = Math.min(width > 1000 ? width - 680 : width, height - TOP_OFFSET);
 
     const visibleIscoCodes = getVisibleIscoCodes();
 
@@ -239,8 +225,6 @@ function renderChart() {
         const pruned = pruneHierarchy(ISCO_HIERARCHY_DATA, visibleIscoCodes);
         activeHierarchyData = pruned ? applyTransitivity(pruned) : { name: "Sin resultados", children: [] };
     }
-
-    updateColorScaleDomains(activeHierarchyData);
 
     const pack = data => d3.pack()
         .size([size, size])
@@ -253,7 +237,7 @@ function renderChart() {
     currentFocusNode = root;
 
     const svg = d3.create("svg")
-        .attr("viewBox", `-${width / 2} -${height / 2} ${width} ${height}`)
+        .attr("viewBox", `-${width / 2} -${height / 2 + TOP_OFFSET / 2} ${width} ${height}`)
         .attr("width", "100%")
         .attr("height", "100%")
         .attr("style", "max-width: 100%; height: 100%; display: block; background: #f8fafc;");
@@ -580,18 +564,20 @@ function updateColorScale() {
     d3.selectAll(".circle-leaf")
         .attr("fill", d => getSemanticColor(d.data));
 
-    const legendBar = document.getElementById("legend-bar");
-    legendBar.className = `legend-bar ${activeMetric}`;
-    
-    const legendTitle = document.getElementById("legend-title");
-    legendTitle.textContent = activeMetric === 'automatizacion' ? "Automatización" : "Aumentación";
+    renderLegend();
+}
 
-    const legendMax = document.getElementById("legend-max-val");
-    if (legendMax) {
-        legendMax.textContent = activeMetric === 'automatizacion' 
-            ? maxAutomatizacion.toFixed(2) 
-            : maxAumentacion.toFixed(2);
-    }
+// Leyenda: un bloque de color por tramo, con su etiqueta
+function renderLegend() {
+    const isAuto = activeMetric === 'automatizacion';
+    const scale = isAuto ? scaleAutomatizacion : scaleAumentacion;
+    document.getElementById("legend-title").textContent = `Exposición a la IA (${isAuto ? "Automatización" : "Potenciación"})`;
+    document.getElementById("legend-steps").innerHTML = scale.range().map((color, i) => `
+        <div class="legend-step">
+            <span class="legend-swatch" style="background-color: ${color};"></span>
+            <span>${EXPOSURE_LABELS[i]}</span>
+        </div>
+    `).join("");
 }
 
 // =============================================================================
@@ -737,10 +723,10 @@ function openOccupationModal(leafData, groupName) {
     const autoScore = leafData.automatizacion_score ?? 0;
     const augScore = leafData.aumentacion_score ?? 0;
 
-    document.getElementById("modal-auto-score").textContent = autoScore.toFixed(2);
+    document.getElementById("modal-auto-score").textContent = `${autoScore.toFixed(2)} · ${getExposureLabel(autoScore, scaleAutomatizacion)}`;
     document.getElementById("modal-auto-bar").style.width = `${Math.round(autoScore * 100)}%`;
 
-    document.getElementById("modal-aug-score").textContent = augScore.toFixed(2);
+    document.getElementById("modal-aug-score").textContent = `${augScore.toFixed(2)} · ${getExposureLabel(augScore, scaleAumentacion)}`;
     document.getElementById("modal-aug-bar").style.width = `${Math.round(augScore * 100)}%`;
 
     const careersListEl = document.getElementById("modal-careers-list");
@@ -840,6 +826,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (hRes.ok && cRes.ok) {
                 ISCO_HIERARCHY_DATA = await hRes.json();
                 CATALOGO_CARRERAS = await cRes.json();
+                setColorScaleDomains(ISCO_HIERARCHY_DATA);
                 renderChart();
             }
         } catch (e) {
@@ -848,6 +835,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Render inicial
+    renderLegend();
     renderChart();
     loadOfficialData();
 
