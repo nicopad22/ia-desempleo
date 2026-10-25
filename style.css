@@ -11,18 +11,15 @@
     --primary-hover: #1d4ed8;
     --primary-light: #eff6ff;
 
-    --auto-low: #e2e8f0;
-    --auto-high: #dc2626;
-
-    --aug-low: #e2e8f0;
-    --aug-high: #1d4ed8;
-
+    /* Radios: --radius-md para todo lo que flota, --radius-sm para elementos internos */
     --radius-sm: 6px;
     --radius-md: 10px;
-    --radius-lg: 16px;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 10px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.15), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    /* Sombras suaves: --shadow-md para todo lo que flota sobre el gráfico */
+    --shadow-sm: 0 1px 2px 0 rgba(28, 25, 23, 0.05);
+    --shadow-md: 0 4px 14px -2px rgba(28, 25, 23, 0.10);
+    --shadow-lg: 0 12px 28px -6px rgba(28, 25, 23, 0.18);
+    /* Margen de los elementos flotantes respecto del borde de la pantalla */
+    --edge: 16px;
 }
 
 * {
@@ -72,13 +69,20 @@ html, body {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-color);
-    border-radius: 30px;
-    padding: 6px 18px;
+    border-radius: var(--radius-md);
+    padding: 8px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: var(--shadow-md);
+    z-index: 50;
+}
+
+.header-row {
     display: flex;
     align-items: center;
     gap: 16px;
-    box-shadow: var(--shadow-md);
-    z-index: 50;
 }
 
 .app-title {
@@ -91,7 +95,7 @@ html, body {
 .segmented-control {
     display: inline-flex;
     background-color: #f1f5f9;
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     padding: 2px;
     border: 1px solid var(--border-color);
 }
@@ -103,7 +107,7 @@ html, body {
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-secondary);
-    border-radius: 16px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
 }
 
@@ -113,16 +117,16 @@ html, body {
     box-shadow: var(--shadow-sm);
 }
 
-/* Tooltips explicativos de Automatización y Aumentación */
+/* Tooltips de Automatización y Potenciación: se muestran bajo la barra superior completa
+   (el contenedor de referencia es .floating-header), para no tapar la leyenda */
 .tooltip-wrapper {
-    position: relative;
     display: inline-flex;
 }
 
 .metric-tooltip {
     display: none;
     position: absolute;
-    top: calc(100% + 12px);
+    top: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
     width: 380px;
@@ -131,7 +135,7 @@ html, body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
-    padding: 16px 18px;
+    padding: 14px 16px;
     color: var(--text-primary);
     font-size: 0.9rem;
     line-height: 1.5;
@@ -139,14 +143,14 @@ html, body {
     text-align: left;
 }
 
-/* Puente invisible superior para mantener abierto el tooltip al mover el mouse hacia el enlace */
+/* Puente invisible desde el botón hasta el tooltip, para que no se cierre al mover el mouse hacia el enlace */
 .metric-tooltip::before {
     content: "";
     position: absolute;
-    top: -14px;
+    top: -100px;
     left: 0;
     right: 0;
-    height: 14px;
+    height: 100px;
 }
 
 .tooltip-wrapper:hover .metric-tooltip,
@@ -161,43 +165,10 @@ html, body {
     margin-bottom: 6px;
 }
 
-.tooltip-subtitle {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-top: 10px;
-    margin-bottom: 4px;
-}
-
 .tooltip-desc {
     font-size: 0.88rem;
     color: var(--text-secondary);
-    margin-bottom: 6px;
-}
-
-.tooltip-color-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 12px;
-}
-
-.tooltip-color-list li {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 0.86rem;
-    color: var(--text-secondary);
-}
-
-.color-swatch {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 1px solid #cbd5e1;
-    flex-shrink: 0;
-    margin-top: 3px;
+    margin-bottom: 8px;
 }
 
 .tooltip-link {
@@ -213,41 +184,92 @@ html, body {
     text-decoration: underline;
 }
 
+/* Mismo ancho que los 4 bloques, para que el título largo haga salto de línea */
 .legend-container {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    min-width: 130px;
+    width: 258px;
 }
 
-.legend-labels {
-    display: flex;
-    justify-content: space-between;
+.legend-title {
     font-size: 0.65rem;
     color: var(--text-secondary);
     font-weight: 600;
 }
 
-.legend-bar {
-    height: 6px;
-    border-radius: 3px;
+/* Tramos discretos de la escala: bloque de color + etiqueta */
+.legend-steps {
+    display: flex;
+    gap: 6px;
+}
+
+.legend-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 60px;
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+}
+
+/* Mini-tooltip de una línea bajo cada bloque de la leyenda (texto en data-tip) */
+.legend-step:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--text-primary);
+    color: white;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+}
+
+.legend-scale-note {
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+.legend-swatch {
     width: 100%;
+    height: 14px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
 }
 
-.legend-bar.automatizacion {
-    background: linear-gradient(to right, var(--auto-low), var(--auto-high));
+/* Explicación permanente: qué es un círculo, su tamaño y su color */
+.legend-encoding {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
 }
 
-.legend-bar.aumentacion {
-    background: linear-gradient(to right, var(--aug-low), var(--aug-high));
+.legend-encoding circle {
+    fill: #94a3b8;
+    stroke: #64748b;
+}
+
+.legend-note {
+    font-size: 0.65rem;
+    font-style: italic;
+    color: var(--text-muted);
 }
 
 /* Controles Flotantes Superiores Derechos (Misma línea superior) */
 .floating-top-right-controls {
     position: fixed;
-    top: 16px;
-    right: 20px;
+    top: var(--edge);
+    right: var(--edge);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -257,7 +279,7 @@ html, body {
 .floating-icon-btn {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-color);
@@ -278,17 +300,117 @@ html, body {
     border-color: var(--border-hover);
 }
 
+/* Botón con texto "Limpiar todo" (distinto del ícono de reiniciar zoom) */
+.floating-text-btn {
+    height: 40px;
+    padding: 0 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.floating-text-btn:hover {
+    background: #fee2e2;
+}
+
+/* Breadcrumb de navegación del zoom, bajo el encabezado */
+.breadcrumb {
+    position: fixed;
+    top: 159px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(660px, calc(100vw - 32px));
+    padding: 4px 12px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: center;
+    z-index: 30;
+}
+
+.breadcrumb:empty {
+    display: none;
+}
+
+.breadcrumb button {
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    font-size: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.breadcrumb button:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb button:disabled {
+    color: var(--text-primary);
+    font-weight: 700;
+    cursor: default;
+    text-decoration: none;
+}
+
+/* Aviso sobre el gráfico cuando quedan muy pocas ocupaciones */
+.chart-notice {
+    position: fixed;
+    bottom: var(--edge);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 8px 8px 16px;
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    z-index: 30;
+}
+
+.chart-notice.hidden {
+    display: none;
+}
+
+.notice-btn {
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--primary);
+    color: white;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.notice-btn:hover {
+    background: var(--primary-hover);
+}
+
 /* Switch Flotante: "Mostrar todo" */
 .floating-switch-panel {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-color);
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     height: 40px;
     padding: 0 14px;
     display: flex;
     align-items: center;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
     flex-shrink: 0;
 }
 
@@ -344,16 +466,16 @@ html, body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-md);
-    padding: 14px;
+    padding: 16px;
     z-index: 30;
 }
 
 /* Ventana Izquierda: Explorador de Carreras */
 .floating-panel-left {
     position: fixed;
-    top: 66px;
-    left: 20px;
-    width: 300px;
+    top: 68px;
+    left: var(--edge);
+    width: 260px;
     max-width: calc(100vw - 40px);
 }
 
@@ -362,6 +484,43 @@ html, body {
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 8px;
+}
+
+/* Guía de pasos numerados: el paso actual se resalta */
+.career-steps {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 10px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.career-steps li.active {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.career-steps li.done {
+    color: #16a34a;
+}
+
+.career-steps li.done::after {
+    content: " ✓";
+}
+
+.career-hint {
+    margin-top: 8px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    background-color: var(--primary-light);
+    color: var(--primary-hover);
+    font-size: 0.72rem;
+}
+
+.career-hint.hidden {
+    display: none;
 }
 
 .search-box {
@@ -387,7 +546,7 @@ html, body {
 
 .search-results {
     position: absolute;
-    top: calc(100% + 4px);
+    top: calc(100% + 2px);
     left: 0;
     right: 0;
     background-color: var(--bg-surface);
@@ -443,11 +602,11 @@ html, body {
 /* Ventana Derecha: Carreras Seleccionadas */
 .floating-panel-right {
     position: fixed;
-    top: 66px;
-    right: 20px;
-    width: 300px;
+    top: 68px;
+    right: var(--edge);
+    width: 260px;
     max-width: calc(100vw - 40px);
-    max-height: calc(100vh - 86px);
+    max-height: calc(100vh - 68px - var(--edge));
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -457,10 +616,12 @@ html, body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 6px;
     margin-bottom: 10px;
 }
 
 .panel-header-row h2 {
+    white-space: nowrap;
     font-size: 0.85rem;
     font-weight: 700;
     color: var(--text-primary);
@@ -524,11 +685,18 @@ html, body {
     flex: 1;
 }
 
+/* Anillo del color de la carrera: igual al borde que tienen sus ocupaciones en el gráfico */
 .career-color-dot {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
+    border: 3px solid;
     flex-shrink: 0;
+}
+
+.career-border-hint {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
 }
 
 .career-name {
@@ -563,9 +731,14 @@ html, body {
     color: var(--text-secondary);
     padding-left: 18px;
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
+    gap: 2px 8px;
+}
+
+.career-card-meta span {
+    white-space: nowrap;
 }
 
 .career-mifuturo-link {
@@ -605,7 +778,7 @@ html, body {
     max-width: 92vw;
     max-height: 85vh;
     background: var(--bg-surface);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--border-color);
     z-index: 90;
@@ -626,7 +799,7 @@ html, body {
     font-weight: 700;
     font-size: 0.72rem;
     padding: 3px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
 }
 
 .btn-close {
@@ -688,7 +861,7 @@ html, body {
 .badge-gradient {
     font-size: 0.72rem;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     background-color: #f1f5f9;
 }
 
@@ -744,7 +917,7 @@ html, body {
     font-size: 0.68rem;
     font-weight: 600;
     padding: 3px 8px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
 }
 
@@ -764,7 +937,7 @@ html, body {
     color: white;
 }
 
-.multi-career-arcs, .career-arc-segment {
+.career-rings {
     pointer-events: none;
 }
 
@@ -773,16 +946,22 @@ circle {
     /* No transición de fill para permitir cambio instantáneo */
 }
 
+/* Píldora de fondo para los nombres de grupo */
+.label-pill {
+    fill: rgba(255, 255, 255, 0.75);
+}
+
+/* Tramo y puntaje bajo el nombre de la ocupación (vista filtrada) */
+.metric-line {
+    font-size: 0.78em;
+    font-weight: 400;
+}
+
 .node--dimmed {
     opacity: 0.12 !important;
 }
 
 text {
-    paint-order: stroke fill;
-    stroke: rgba(255, 255, 255, 0.95);
-    stroke-width: 3.5px;
-    stroke-linejoin: round;
-    stroke-linecap: round;
     user-select: none;
     pointer-events: none;
 }
@@ -793,10 +972,12 @@ text {
         width: calc(100vw - 32px);
         left: 16px;
         transform: none;
-        flex-direction: column;
         align-items: flex-start;
         gap: 8px;
         border-radius: var(--radius-md);
+    }
+    .header-row {
+        flex-wrap: wrap;
     }
     .floating-panel-left {
         top: 130px;

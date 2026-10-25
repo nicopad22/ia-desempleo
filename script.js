@@ -14,62 +14,62 @@ let FILTER_MODE = 'repack';
 // Métrica de color activa: 'automatizacion' | 'aumentacion'
 let activeMetric = 'automatizacion';
 
-// Paleta de colores distintivos para las carreras seleccionadas
+// Paleta de colores para las carreras seleccionadas: tonos tierra, violeta y verdes oscuros
+// que no compiten con la escala roja (automatización) ni con la azul (potenciación)
 const CAREER_PALETTE = [
-    "#d4eb25", // Azul eléctrico
-    "#00ffaa", // Rojo
-    "#16a34a", // Verde esmeralda
-    "#9333ea", // Púrpura
-    "#ea580c", // Naranja
-    "#0891b2", // Cian
-    "#db2777", // Magenta
-    "#d97706", // Ámbar
-    "#4f46e5", // Índigo
-    "#059669"  // Esmeralda oscuro
+    "#6d28d9", // Violeta
+    "#15803d", // Verde oscuro
+    "#b45309", // Ocre
+    "#0f766e", // Verde azulado oscuro
+    "#86198f", // Ciruela
+    "#78350f", // Café
+    "#65a30d", // Verde oliva
+    "#ca8a04", // Mostaza
+    "#44403c"  // Gris piedra
 ];
 
 // Estado de selección de carreras: Map(id -> { ...carrera, color })
 const selectedCareers = new Map();
 
-// Límites máximos calculados según el máximo real observado en los datos (OIT WP 140)
-// para asegurar que los círculos muestren contraste pleno y no se vean deslavados
-let maxAutomatizacion = 0.41;
-let maxAumentacion = 0.90;
+// Etiquetas de los 4 tramos de exposición (de menor a mayor)
+const EXPOSURE_LABELS = ["Baja", "Media-baja", "Media-alta", "Alta"];
 
-// Escalas de Color Semánticas Monocromáticas (OIT WP 140) calibradas al máximo real
-const scaleAutomatizacion = d3.scaleLinear()
-    .domain([0.0, maxAutomatizacion])
-    .range(["#e2e8f0", "#dc2626"])
-    .interpolate(d3.interpolateRgb);
+// Significado de cada tramo, para el mini-tooltip de la leyenda
+const EXPOSURE_MEANINGS = {
+    automatizacion: [
+        "La IA podría hacer muy pocas tareas",
+        "La IA podría hacer algunas tareas",
+        "La IA podría hacer varias tareas",
+        "La IA podría hacer muchas tareas"
+    ],
+    aumentacion: [
+        "La IA ayudaría en muy pocas tareas",
+        "La IA podría ayudar en algunas tareas",
+        "La IA podría ayudar en varias tareas",
+        "La IA podría ayudar en muchas tareas"
+    ]
+};
 
-const scaleAumentacion = d3.scaleLinear()
-    .domain([0.0, maxAumentacion])
-    .range(["#e2e8f0", "#1d4ed8"])
-    .interpolate(d3.interpolateRgb);
+// Escalas de color discretas (4 tramos): de rosado/celeste suave a rojo/azul oscuro.
+// El dominio se fija una sola vez al cargar los datos (ver setColorScaleDomains).
+const scaleAutomatizacion = d3.scaleQuantize()
+    .domain([0.0, 1.0])
+    .range(["#fecaca", "#f87171", "#dc2626", "#7f1d1d"]);
 
-function updateColorScaleDomains(treeData) {
-    if (!treeData) return;
+const scaleAumentacion = d3.scaleQuantize()
+    .domain([0.0, 1.0])
+    .range(["#bfdbfe", "#60a5fa", "#2563eb", "#1e3a8a"]);
+
+// El máximo se calcula sobre el dataset completo, así los colores no cambian al filtrar
+function setColorScaleDomains(treeData) {
     const leaves = getAllLeaves(treeData);
-    if (leaves.length > 0) {
-        const autoMax = d3.max(leaves, d => d.automatizacion_score ?? 0);
-        const augMax = d3.max(leaves, d => d.aumentacion_score ?? 0);
-        if (autoMax) maxAutomatizacion = autoMax;
-        if (augMax) maxAumentacion = augMax;
-    }
-    scaleAutomatizacion.domain([0.0, maxAutomatizacion]);
-    scaleAumentacion.domain([0.0, maxAumentacion]);
+    scaleAutomatizacion.domain([0.0, d3.max(leaves, d => d.automatizacion_score ?? 0)]);
+    scaleAumentacion.domain([0.0, d3.max(leaves, d => d.aumentacion_score ?? 0)]);
+}
 
-    // Actualizar valor numérico máximo en la leyenda flotante y en los tooltips
-    const legendMax = document.getElementById("legend-max-val");
-    if (legendMax) {
-        legendMax.textContent = activeMetric === 'automatizacion' 
-            ? maxAutomatizacion.toFixed(2) 
-            : maxAumentacion.toFixed(2);
-    }
-    const tooltipAutoMax = document.getElementById("tooltip-auto-max");
-    if (tooltipAutoMax) tooltipAutoMax.textContent = maxAutomatizacion.toFixed(2);
-    const tooltipAugMax = document.getElementById("tooltip-aug-max");
-    if (tooltipAugMax) tooltipAugMax.textContent = maxAumentacion.toFixed(2);
+// Etiqueta del tramo de un puntaje (ej: "Media-alta")
+function getExposureLabel(score, scale) {
+    return EXPOSURE_LABELS[scale.range().indexOf(scale(score))];
 }
 
 function getSemanticColor(leafData) {
@@ -79,6 +79,20 @@ function getSemanticColor(leafData) {
     return activeMetric === 'automatizacion' 
         ? scaleAutomatizacion(score) 
         : scaleAumentacion(score);
+}
+
+// Tramo y puntaje de la métrica activa (ej: "Media-baja · 0.21")
+function getMetricText(leafData) {
+    const isAuto = activeMetric === 'automatizacion';
+    const score = (isAuto ? leafData.automatizacion_score : leafData.aumentacion_score) ?? 0;
+    return `${getExposureLabel(score, isAuto ? scaleAutomatizacion : scaleAumentacion)} · ${score.toFixed(2)}`;
+}
+
+// Color del texto de una ocupación: oscuro sobre rellenos claros, blanco sobre rellenos oscuros
+function getLeafTextColor(leafData, opacity = 1) {
+    const color = d3.color(d3.lab(getSemanticColor(leafData)).l > 60 ? "#1c1917" : "#ffffff");
+    color.opacity = opacity;
+    return color.formatRgb();
 }
 
 // Asignar el siguiente color disponible a una carrera
@@ -97,6 +111,16 @@ function getNextCareerColor() {
 let CATALOGO_CARRERAS = [];
 let ISCO_HIERARCHY_DATA = null;
 
+// Títulos ISCO con traducciones poco naturales en Chile -> nombre que se muestra
+const NOMBRES_CHILE = {
+    "Profesionales de partería": "Matronas y matrones"
+};
+
+function applyChileanNames(node) {
+    if (NOMBRES_CHILE[node.name]) node.name = NOMBRES_CHILE[node.name];
+    (node.children || []).forEach(applyChileanNames);
+}
+
 // =============================================================================
 // 3. UTILIDADES DE BÚSQUEDA Y FILTRADO
 // =============================================================================
@@ -114,13 +138,28 @@ function searchCareers(query) {
     const q = normalizeText(query);
     if (!q) return [...CATALOGO_CARRERAS];
 
-    return CATALOGO_CARRERAS.filter(carrera => {
-        const titleMatch = normalizeText(carrera.nombre).includes(q);
+    // Relevancia: 0 = el nombre empieza con la búsqueda, 1 = el nombre la contiene,
+    // 2 = coincide por área o alias, -1 = no coincide
+    function rank(carrera) {
+        const title = normalizeText(carrera.nombre);
+        if (title.startsWith(q)) return 0;
+        if (title.includes(q)) return 1;
         const areaMatch = normalizeText(carrera.area || carrera.area_cine || "").includes(q);
         const aliases = carrera.alias || carrera.alias_busqueda || [];
         const aliasMatch = aliases.some(a => normalizeText(a).includes(q));
-        return titleMatch || areaMatch || aliasMatch;
-    });
+        return areaMatch || aliasMatch ? 2 : -1;
+    }
+
+    return CATALOGO_CARRERAS
+        .map(carrera => ({ carrera, r: rank(carrera) }))
+        .filter(item => item.r >= 0)
+        .sort((a, b) => a.r - b.r)
+        .map(item => item.carrera);
+}
+
+// "1 ocupación" / "N ocupaciones"
+function formatOcupaciones(n) {
+    return n === 1 ? "1 ocupación" : `${n} ocupaciones`;
 }
 
 function getVisibleIscoCodes() {
@@ -158,45 +197,20 @@ function getAllLeaves(node) {
     return node.children.flatMap(getAllLeaves);
 }
 
-// Transitividad: cuando en vista filtrada una ocupación es la única en una categoría,
-// se colapsan los niveles intermedios para que pertenezca directamente a la categoría grande (Gran Grupo).
-function applyTransitivity(node, depth = 0) {
+// Vista filtrada con muchas ocupaciones: se reemplaza cada grupo que tiene un solo hijo
+// por ese hijo, para no dibujar anillos vacíos (la raíz se mantiene)
+function collapseSingleChild(node, isRoot = true) {
     if (!node.children || node.children.length === 0) return { ...node };
+    const children = node.children.map(child => collapseSingleChild(child, false));
+    if (!isRoot && children.length === 1) return children[0];
+    return { ...node, children };
+}
 
-    let processedChildren = node.children.map(child => applyTransitivity(child, depth + 1));
-
-    // Si es Root (depth 0), preservamos los Grandes Grupos (depth 1)
-    if (depth === 0) {
-        return {
-            ...node,
-            children: processedChildren
-        };
-    }
-
-    // Para cualquier categoría bajo Root (Grandes Grupos o subcategorías):
-    // Colapsar intermediarios redundantes que solo contengan 1 ocupación
-    // o intermediarios que solo contengan 1 subcategoría
-    const newChildren = [];
-    for (const child of processedChildren) {
-        if (child.children && child.children.length > 0) {
-            const leaves = getAllLeaves(child);
-            if (leaves.length === 1) {
-                // Transitividad: la ocupación pertenece directamente a la categoría grande
-                newChildren.push(leaves[0]);
-                continue;
-            }
-            if (child.children.length === 1 && child.children[0].children) {
-                newChildren.push(child.children[0]);
-                continue;
-            }
-        }
-        newChildren.push(child);
-    }
-
-    return {
-        ...node,
-        children: newChildren
-    };
+// Vista filtrada con pocas ocupaciones: todas las ocupaciones al mismo nivel, sin grupos.
+// Se guarda el nombre del grupo original para mostrarlo en el detalle.
+function flattenLeaves(node, groupName) {
+    if (!node.children || node.children.length === 0) return [{ ...node, grupo: groupName }];
+    return node.children.flatMap(child => flattenLeaves(child, node.name));
 }
 
 // Obtener las carreras seleccionadas asociadas a una ocupación
@@ -215,6 +229,9 @@ function getMatchingSelectedCareers(leafData) {
 // 4. VISUALIZACIÓN D3 (ZOOMABLE CIRCLE PACKING A PANTALLA COMPLETA)
 // =============================================================================
 
+// Con esta cantidad de ocupaciones o menos, la vista filtrada no muestra grupos
+const MAX_FLAT_OCCUPATIONS = 15;
+
 let resetZoomFunction = null;
 let currentFocusNode = null;
 
@@ -229,22 +246,43 @@ function renderChart() {
 
     const width = window.innerWidth;
     const height = window.innerHeight;
-    const size = Math.min(width, height);
-
     const visibleIscoCodes = getVisibleIscoCodes();
+
+    // El gráfico usa casi todo el alto; el encabezado y los paneles flotan encima.
+    // En la vista filtrada las ocupaciones llegan hasta el borde del círculo raíz, así que
+    // el gráfico empieza bajo el encabezado y el breadcrumb para que ninguna quede tapada.
+    // En pantallas anchas se deja libre el ancho de los paneles laterales (260px + márgenes).
+    const isFilteredView = FILTER_MODE === 'repack' && visibleIscoCodes !== null;
+    const TOP_OFFSET = isFilteredView ? 193 : 60;
+    const BOTTOM_MARGIN = 12;
+    const size = Math.min(width > 1000 ? width - 2 * 292 : width, height - TOP_OFFSET - BOTTOM_MARGIN);
 
     // Determinar árbol a renderizar según FILTER_MODE
     let activeHierarchyData = ISCO_HIERARCHY_DATA;
     if (FILTER_MODE === 'repack' && visibleIscoCodes !== null) {
         const pruned = pruneHierarchy(ISCO_HIERARCHY_DATA, visibleIscoCodes);
-        activeHierarchyData = pruned ? applyTransitivity(pruned) : { name: "Sin resultados", children: [] };
+        if (!pruned) {
+            activeHierarchyData = { name: "Sin resultados", children: [] };
+        } else if (getAllLeaves(pruned).length <= MAX_FLAT_OCCUPATIONS) {
+            activeHierarchyData = { ...pruned, children: flattenLeaves(pruned, pruned.name) };
+        } else {
+            activeHierarchyData = collapseSingleChild(pruned);
+        }
     }
 
-    updateColorScaleDomains(activeHierarchyData);
+    // Aviso cuando el filtro deja menos de 3 ocupaciones visibles
+    const visibleCount = visibleIscoCodes === null ? null
+        : getAllLeaves(ISCO_HIERARCHY_DATA).filter(l => visibleIscoCodes.has(l.isco08)).length;
+    const showNotice = FILTER_MODE === 'repack' && visibleCount !== null && visibleCount < 3;
+    document.getElementById("chart-notice").classList.toggle("hidden", !showNotice);
+    document.getElementById("chart-notice-text").textContent = visibleCount === 0
+        ? "Ninguna ocupación del gráfico está relacionada con tus carreras."
+        : `Solo hay ${formatOcupaciones(visibleCount)} relacionada${visibleCount === 1 ? "" : "s"} con tus carreras.`;
 
     const pack = data => d3.pack()
         .size([size, size])
-        .padding(4)
+        // Más separación cuando hay carreras, para que quepan los anillos de color
+        .padding(visibleIscoCodes === null ? 3 : 12)
         (d3.hierarchy(data)
             .sum(d => d.value || 0)
             .sort((a, b) => (b.value || 0) - (a.value || 0)));
@@ -252,19 +290,21 @@ function renderChart() {
     const root = pack(activeHierarchyData);
     currentFocusNode = root;
 
+    // Relleno de los grupos según la profundidad (como en el ejemplo de Observable),
+    // en grises cálidos para no confundirse con los colores de exposición
+    const depthColor = d3.scaleLinear()
+        .domain([0, 4])
+        .range(["#f5f4f0", "#c9c3b8"])
+        .interpolate(d3.interpolateHcl);
+
     const svg = d3.create("svg")
-        .attr("viewBox", `-${width / 2} -${height / 2} ${width} ${height}`)
+        .attr("viewBox", `-${width / 2} -${height / 2 + (TOP_OFFSET - BOTTOM_MARGIN) / 2} ${width} ${height}`)
         .attr("width", "100%")
         .attr("height", "100%")
-        .attr("style", "max-width: 100%; height: 100%; display: block; background: #f8fafc;");
+        .attr("style", `max-width: 100%; height: 100%; display: block; background: ${depthColor(0)};`);
 
     let focus = root;
     let view;
-
-    const depthColor = d3.scaleLinear()
-        .domain([0, 3])
-        .range(["#f1f5f9", "#cbd5e1"])
-        .interpolate(d3.interpolateHcl);
 
     // Contenedor de nodos
     const nodeGroup = svg.append("g");
@@ -279,38 +319,21 @@ function renderChart() {
     const circle = node.append("circle")
         .attr("class", d => d.children ? "circle-parent" : "circle-leaf node-fill")
         .attr("fill", d => d.children ? depthColor(d.depth) : getSemanticColor(d.data))
-        .attr("stroke", d => {
-            if (d.children) return "#94a3b8";
-            // Si es hoja y tiene exactamente 1 carrera seleccionada, se pinta de su color
-            const matches = getMatchingSelectedCareers(d.data);
-            if (matches.length === 1) return matches[0].color;
-            return "#ffffff";
-        })
-        .attr("stroke-width", d => {
-            if (d.children) return "1px";
-            const matches = getMatchingSelectedCareers(d.data);
-            return matches.length === 1 ? "4px" : "1.5px";
-        });
+        .attr("stroke-width", 1);
 
-    // Segmentos de arco multicolor cuando una ocupación tiene >= 2 carreras seleccionadas
-    const arcGenerator = d3.arc();
-
+    // Anillos finos alrededor de la ocupación, uno por cada carrera seleccionada relacionada
     node.each(function(d) {
         if (d.children) return;
         const matches = getMatchingSelectedCareers(d.data);
-        if (matches.length >= 2) {
-            const m = matches.length;
-            const step = (2 * Math.PI) / m;
-            const gArcs = d3.select(this).append("g").attr("class", "multi-career-arcs");
-
-            matches.forEach((carrera, i) => {
-                gArcs.append("path")
-                    .attr("class", "career-arc-segment")
-                    .attr("fill", carrera.color)
-                    .attr("data-index", i)
-                    .attr("data-total", m);
-            });
-        }
+        if (matches.length === 0) return;
+        const gRings = d3.select(this).append("g").attr("class", "career-rings");
+        matches.forEach((carrera, i) => {
+            gRings.append("circle")
+                .attr("fill", "none")
+                .attr("stroke", carrera.color)
+                .attr("stroke-width", 2)
+                .attr("data-index", i);
+        });
     });
 
     // Función para partir textos en múltiples líneas completas (sin cortar con "...")
@@ -336,8 +359,6 @@ function renderChart() {
 
     // Límite de radio en pantalla para evitar que una única ocupación ocupe toda la ventana
     const MAX_LEAF_SCREEN_RADIUS = Math.min(size * 0.22, 135);
-    // Radio mínimo en pantalla a partir del cual una ocupación muestra su título y abre detalle directo
-    const DIRECT_LEAF_MIN_RADIUS = 34;
 
     function getTargetView(targetNode) {
         const leaves = targetNode.leaves();
@@ -347,30 +368,26 @@ function renderChart() {
         return [targetNode.x, targetNode.y, diameter];
     }
 
-    function isDescendant(nodeObj, ancestor) {
-        let curr = nodeObj.parent;
-        while (curr) {
-            if (curr === ancestor) return true;
-            curr = curr.parent;
-        }
-        return false;
-    }
-
-    function isLabelVisible(d, focusNode, k) {
+    // Como en el ejemplo de Observable: solo se ven los nombres de los hijos del nodo con foco
+    // (en "Mostrar todo", las ocupaciones atenuadas no muestran nombre)
+    function isLabelVisible(d, focusNode) {
         if (FILTER_MODE === 'ghost' && visibleIscoCodes !== null && !d.children && !visibleIscoCodes.has(d.data.isco08)) {
             return false;
         }
-        if (!d.children) {
-            return d.parent === focusNode || (isDescendant(d, focusNode) && d.r * k >= DIRECT_LEAF_MIN_RADIUS);
+        return d.parent === focusNode;
+    }
+
+    // Nombre de ocupación en dos líneas como máximo: se parte en el espacio que deja las
+    // líneas más parejas; si una línea supera 24 caracteres, se corta con "…"
+    function wrapLeafName(name) {
+        const words = name.trim().split(/\s+/);
+        if (name.length <= 16 || words.length === 1) return [name];
+        let best = null;
+        for (let i = 1; i < words.length; i++) {
+            const lines = [words.slice(0, i).join(" "), words.slice(i).join(" ")];
+            if (!best || Math.max(...lines.map(l => l.length)) < Math.max(...best.map(l => l.length))) best = lines;
         }
-        if (d.parent !== focusNode) return false;
-        const hasLargeLeaf = d.leaves().some(leaf => {
-            if (FILTER_MODE === 'ghost' && visibleIscoCodes !== null && !visibleIscoCodes.has(leaf.data.isco08)) {
-                return false;
-            }
-            return leaf.r * k >= DIRECT_LEAF_MIN_RADIUS;
-        });
-        return !hasLargeLeaf;
+        return best.map(l => l.length > 24 ? l.slice(0, 23).trimEnd() + "…" : l);
     }
 
     function getDynamicFontSize(d, k) {
@@ -378,31 +395,37 @@ function renderChart() {
         const lines = d._lines || [];
         const n = Math.max(1, lines.length);
         const maxLen = d._maxLineLen || 10;
-        const fitWidth = (r * 1.75) / (maxLen * 0.54);
+        const fitWidth = (r * 1.7) / (maxLen * 0.56);
         const fitHeight = (r * 1.55) / (n * 1.18);
         const rawSize = Math.min(fitWidth, fitHeight);
-        const maxFont = d.children ? 20 : 17;
-        return Math.max(9.5, Math.min(maxFont, rawSize));
+        const maxFont = d.children ? 12 : 14;
+        return Math.max(8, Math.min(maxFont, rawSize));
     }
 
     // Etiquetas de texto multilínea con tamaños dinámicos
     const labelGroup = svg.append("g")
-        .style("font-family", "system-ui, sans-serif")
+        .style("font-family", "system-ui, -apple-system, sans-serif")
+        .style("font-weight", "500")
         .style("pointer-events", "none")
         .attr("text-anchor", "middle");
 
-    const label = labelGroup.selectAll("text")
+    // Cada etiqueta es un grupo <g>; los nombres de grupo llevan además una píldora blanca de fondo
+    const label = labelGroup.selectAll("g")
         .data(root.descendants().slice(1))
-        .join("text")
+        .join("g")
         .attr("class", d => d.children ? "label-parent" : "label-leaf")
-        .style("font-weight", d => d.children ? "700" : "600")
-        .style("fill", "#0f172a")
         .each(function(d) {
-            const el = d3.select(this);
-            const lines = wrapTextToLines(d.data.name || "");
-            d._lines = lines;
-            d._maxLineLen = Math.max(1, ...lines.map(l => l.length));
-            const n = lines.length;
+            if (d.children) d3.select(this).append("rect").attr("class", "label-pill");
+            const el = d3.select(this).append("text")
+                .style("fill", d.children ? "#1c1917" : getLeafTextColor(d.data));
+            const lines = d.children
+                ? wrapTextToLines(d.data.name || "")
+                : wrapLeafName(d.data.name || "");
+            // En la vista filtrada, las ocupaciones muestran además su tramo y puntaje
+            const showMetric = !d.children && visibleIscoCodes !== null;
+            d._lines = showMetric ? [...lines, getMetricText(d.data)] : lines;
+            d._maxLineLen = Math.max(1, ...d._lines.map(l => l.length));
+            const n = d._lines.length;
             if (n === 0) return;
 
             lines.forEach((lineText, idx) => {
@@ -415,6 +438,15 @@ function renderChart() {
                     .attr("dy", dy)
                     .text(lineText);
             });
+
+            if (showMetric) {
+                el.append("tspan")
+                    .attr("class", "metric-line")
+                    .style("fill", getLeafTextColor(d.data, 0.75))
+                    .attr("x", 0)
+                    .attr("dy", "1.3em")
+                    .text(getMetricText(d.data));
+            }
         });
 
     // Función de actualización de coordenadas, radios y tamaño de texto dinámico
@@ -425,52 +457,56 @@ function renderChart() {
         node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
         circle.attr("r", d => Math.max(0, d.r * k));
 
-        // Actualizar arcos de borde multicolor
-        node.selectAll(".multi-career-arcs path").each(function(d) {
-            const i = parseInt(d3.select(this).attr("data-index"), 10);
-            const m = parseInt(d3.select(this).attr("data-total"), 10);
-            const r = Math.max(0, d.r * k);
-            const step = (2 * Math.PI) / m;
-            const arcPath = arcGenerator({
-                innerRadius: Math.max(0, r - 3),
-                outerRadius: r + 1.5,
-                startAngle: i * step,
-                endAngle: (i + 1) * step
-            });
-            d3.select(this).attr("d", arcPath);
-        });
+        // Anillos de carreras: el primero a 3px del círculo y cada uno 3.5px más afuera
+        node.selectAll(".career-rings circle")
+            .attr("r", function(d) { return Math.max(0, d.r * k) + 3 + this.getAttribute("data-index") * 3.5; });
 
         label
             .attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
             .style("font-size", d => `${getDynamicFontSize(d, k).toFixed(1)}px`);
+
+        // Tamaño aproximado de la píldora según el largo y la cantidad de líneas del texto
+        label.select(".label-pill").each(function(d) {
+            const fontSize = getDynamicFontSize(d, k);
+            const w = d._maxLineLen * fontSize * 0.6 + 14;
+            const h = d._lines.length * fontSize * 1.18 + 6;
+            d3.select(this)
+                .attr("x", -w / 2).attr("y", -h / 2)
+                .attr("width", w).attr("height", h)
+                .attr("rx", Math.min(h / 2, 10));
+        });
     }
+
+    // Nombre del nivel raíz en el breadcrumb
+    const rootLabel = FILTER_MODE === 'repack' && visibleIscoCodes !== null
+        ? "Ocupaciones relacionadas"
+        : "Todas las ocupaciones";
+    renderBreadcrumb(root, rootLabel, n => zoom(null, n));
 
     // Zoom inicial y visibilidad inicial de etiquetas
     const initialView = getTargetView(root);
     zoomTo(initialView);
-    const initialK = size / initialView[2];
     label
-        .style("fill-opacity", d => isLabelVisible(d, root, initialK) ? 1 : 0)
-        .style("display", d => isLabelVisible(d, root, initialK) ? "inline" : "none");
+        .style("fill-opacity", d => isLabelVisible(d, root) ? 1 : 0)
+        .style("display", d => isLabelVisible(d, root) ? "inline" : "none");
 
     // Función de transición de zoom
     function zoom(event, d) {
         const prevFocus = focus;
-        const prevK = size / view[2];
         focus = d;
         currentFocusNode = d;
+        renderBreadcrumb(focus, rootLabel, n => zoom(null, n));
 
         const targetView = getTargetView(focus);
-        const nextK = size / targetView[2];
 
         // Cancelar transiciones previas de etiquetas para prevenir desfases visuales
         label.interrupt();
 
         // Mostrar etiquetas visibles en el foco previo o en el nuevo foco durante la transición
-        label.style("display", dNode => (isLabelVisible(dNode, focus, nextK) || isLabelVisible(dNode, prevFocus, prevK)) ? "inline" : "none");
+        label.style("display", dNode => (isLabelVisible(dNode, focus) || isLabelVisible(dNode, prevFocus)) ? "inline" : "none");
 
         const transition = svg.transition()
-            .duration(event && event.altKey ? 5000 : 700)
+            .duration(event && event.altKey ? 7500 : 750)
             .tween("zoom", () => {
                 const i = d3.interpolateZoom(view, targetView);
                 return t => zoomTo(i(t));
@@ -478,76 +514,30 @@ function renderChart() {
 
         label
             .transition(transition)
-            .style("fill-opacity", dNode => isLabelVisible(dNode, focus, nextK) ? 1 : 0)
+            .style("fill-opacity", dNode => isLabelVisible(dNode, focus) ? 1 : 0)
             .on("end", function(dNode) { 
-                if (!isLabelVisible(dNode, focus, nextK)) {
+                if (!isLabelVisible(dNode, focus)) {
                     d3.select(this).style("display", "none");
                 }
             });
     }
 
-    // Efectos de hover sobre los nodos
-    node.on("mouseover", function(event, d) {
-        if (d.children) {
-            d3.select(this).select("circle").attr("stroke", "#0f172a").attr("stroke-width", "2px");
-        } else {
-            const matches = getMatchingSelectedCareers(d.data);
-            if (matches.length === 0) {
-                d3.select(this).select("circle").attr("stroke", "#0f172a").attr("stroke-width", "2.5px");
-            }
-        }
-    })
-    .on("mouseout", function(event, d) {
-        if (d.children) {
-            d3.select(this).select("circle").attr("stroke", "#94a3b8").attr("stroke-width", "1px");
-        } else {
-            const matches = getMatchingSelectedCareers(d.data);
-            if (matches.length === 0) {
-                d3.select(this).select("circle").attr("stroke", "#ffffff").attr("stroke-width", "1.5px");
-            } else if (matches.length === 1) {
-                d3.select(this).select("circle").attr("stroke", matches[0].color).attr("stroke-width", "4px");
-            }
-        }
-    });
+    // Borde fino oscuro al pasar el mouse, como en el ejemplo de Observable
+    node.on("mouseover", function() { d3.select(this).select("circle").attr("stroke", "#1c1917"); })
+        .on("mouseout", function() { d3.select(this).select("circle").attr("stroke", null); });
 
-    // Navegación: acceso directo al detalle si la ocupación es suficientemente grande, o progresión por nivel
+    // Navegación como en el ejemplo de Observable: clic en un grupo hace zoom directo a él.
+    // Clic en una ocupación: si es hija del foco (su nombre está visible) se abre el detalle;
+    // si no, se hace zoom a su grupo. Clic en el grupo con foco sale un nivel.
     node.on("click", function(event, d) {
         event.stopPropagation();
-        const currentK = size / view[2];
-
-        // 0. Si es una ocupación (hoja) suficientemente grande o hija directa del foco, abrir su detalle directo
-        if (!d.children && (d.parent === focus || d.r * currentK >= DIRECT_LEAF_MIN_RADIUS)) {
-            const parentName = d.parent ? d.parent.data.name : "Gran Grupo";
-            openOccupationModal(d.data, parentName);
-            return;
-        }
-
-        // 1. Si se hace clic en la categoría que YA está en foco -> retroceder al nivel anterior
-        if (d === focus) {
-            if (focus.parent) {
-                zoom(event, focus.parent);
-            }
-            return;
-        }
-
-        // 2. Si d es descendiente de focus, avanzar solo un nivel hacia d
-        let nextStep = d;
-        while (nextStep.parent && nextStep.parent !== focus) {
-            nextStep = nextStep.parent;
-        }
-
-        if (nextStep.parent === focus) {
-            if (nextStep.children) {
-                zoom(event, nextStep);
-            } else {
-                openOccupationModal(nextStep.data, focus.data.name);
-            }
-            return;
-        }
-
-        // 3. Si d está en otra rama, zoom al padre de d
-        if (d.parent) {
-            zoom(event, d.parent);
+        if (!d.children) {
+            if (d.parent === focus) openOccupationModal(d.data, focus.data.name);
+            else zoom(event, d.parent);
+        } else if (d === focus) {
+            if (focus.parent) zoom(event, focus.parent);
+        } else {
+            zoom(event, d);
         }
     });
 
@@ -575,23 +565,51 @@ function renderChart() {
     chartContainer.appendChild(chartElement);
 }
 
+// Breadcrumb con la ruta desde la raíz hasta el foco actual; onSelect hace zoom al nivel clickeado
+function renderBreadcrumb(focusNode, rootLabel, onSelect) {
+    const nav = document.getElementById("breadcrumb");
+    nav.innerHTML = "";
+    focusNode.ancestors().reverse().forEach((n, i) => {
+        if (i > 0) nav.append(" › ");
+        const btn = document.createElement("button");
+        btn.textContent = i === 0 ? rootLabel : n.data.name;
+        btn.disabled = n === focusNode;
+        btn.addEventListener("click", () => onSelect(n));
+        nav.append(btn);
+    });
+}
+
 // Cambio instantáneo de paleta de color (sin transiciones)
 function updateColorScale() {
     d3.selectAll(".circle-leaf")
         .attr("fill", d => getSemanticColor(d.data));
+    d3.selectAll(".label-leaf text")
+        .style("fill", d => getLeafTextColor(d.data));
+    d3.selectAll(".metric-line")
+        .text(d => getMetricText(d.data))
+        .style("fill", d => getLeafTextColor(d.data, 0.75));
 
-    const legendBar = document.getElementById("legend-bar");
-    legendBar.className = `legend-bar ${activeMetric}`;
-    
-    const legendTitle = document.getElementById("legend-title");
-    legendTitle.textContent = activeMetric === 'automatizacion' ? "Automatización" : "Aumentación";
+    renderLegend();
+}
 
-    const legendMax = document.getElementById("legend-max-val");
-    if (legendMax) {
-        legendMax.textContent = activeMetric === 'automatizacion' 
-            ? maxAutomatizacion.toFixed(2) 
-            : maxAumentacion.toFixed(2);
-    }
+// Leyenda: un bloque de color por tramo, con su etiqueta
+function renderLegend() {
+    const isAuto = activeMetric === 'automatizacion';
+    const scale = isAuto ? scaleAutomatizacion : scaleAumentacion;
+    document.getElementById("legend-title").textContent = isAuto
+        ? "¿Cuánto podría la IA reemplazar tareas de este trabajo?"
+        : "¿Cuánto podría la IA ayudar en este trabajo?";
+    // Cada bloque muestra al pasar el mouse su rango real (calculado desde la escala) y su significado
+    document.getElementById("legend-steps").innerHTML = scale.range().map((color, i) => {
+        const [from, to] = scale.invertExtent(color);
+        const tip = `${EXPOSURE_LABELS[i]} · ${from.toFixed(2)}–${to.toFixed(2)} · ${EXPOSURE_MEANINGS[activeMetric][i]}`;
+        return `
+        <div class="legend-step" data-tip="${tip}">
+            <span class="legend-swatch" style="background-color: ${color};"></span>
+            <span>${EXPOSURE_LABELS[i]}</span>
+        </div>
+    `;
+    }).join("");
 }
 
 // =============================================================================
@@ -676,6 +694,10 @@ function renderSelectedCareers() {
     countEl.textContent = selectedCareers.size;
     clearBtn.style.display = selectedCareers.size > 0 ? "inline-block" : "none";
 
+    updateCareerSteps();
+    // Aviso tras agregar la primera carrera (solo cuando el gráfico se filtra)
+    document.getElementById("career-added-hint").classList.toggle("hidden", selectedCareers.size !== 1 || FILTER_MODE !== 'repack');
+
     if (selectedCareers.size === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -686,23 +708,40 @@ function renderSelectedCareers() {
         return;
     }
 
-    container.innerHTML = Array.from(selectedCareers.values()).map(c => `
+    container.innerHTML = `
+        <p class="career-border-hint">El color de cada carrera es el borde de sus ocupaciones en el gráfico. Si una ocupación es de varias carreras, tiene un anillo por cada una.</p>
+    ` + Array.from(selectedCareers.values()).map(c => `
         <div class="career-card" data-id="${c.id}">
             <div class="career-card-header">
                 <div class="career-title-group">
-                    <span class="career-color-dot" style="background-color: ${c.color};"></span>
+                    <span class="career-color-dot" style="border-color: ${c.color};" title="Borde en el gráfico"></span>
                     <span class="career-name">${c.nombre}</span>
                 </div>
                 <button class="btn-remove-career" onclick="removeCareer('${c.id}')" title="Quitar">&times;</button>
             </div>
             <div class="career-card-meta">
-                <span>${c.nivel} · ${c.ocupaciones.length} ocupaciones</span>
+                <span>${c.nivel} · ${formatOcupaciones(c.ocupaciones.length)}</span>
                 <a href="https://www.mifuturo.cl/buscador-de-estadisticas-por-carrera/" target="_blank" rel="noopener noreferrer" class="career-mifuturo-link">
                     MiFuturo.cl &nearr;
                 </a>
             </div>
         </div>
     `).join("");
+}
+
+// Guía de pasos: el paso 1 se completa al elegir una carrera; los pasos 2 y 3, al abrir
+// el detalle de una ocupación. Se resaltan los pasos que faltan por hacer.
+let hasOpenedDetail = false;
+
+function updateCareerSteps() {
+    const hasCareers = selectedCareers.size > 0;
+    if (!hasCareers) hasOpenedDetail = false;
+    const done = { 1: hasCareers, 2: hasOpenedDetail, 3: hasOpenedDetail };
+    document.querySelectorAll("#career-steps li").forEach(li => {
+        const step = li.dataset.step;
+        li.classList.toggle("done", done[step]);
+        li.classList.toggle("active", !done[step] && (step === "1") === !hasCareers);
+    });
 }
 
 function toggleCareerFromModal(careerId, btnEl) {
@@ -727,7 +766,7 @@ function openOccupationModal(leafData, groupName) {
 
     document.getElementById("modal-isco-code").textContent = `ISCO-08: ${leafData.isco08}`;
     document.getElementById("modal-title").textContent = leafData.name;
-    document.getElementById("modal-parent-group").textContent = groupName || "Gran Grupo";
+    document.getElementById("modal-parent-group").textContent = leafData.grupo || groupName || "Gran Grupo";
 
     const empFormatted = leafData.value ? Number(leafData.value).toLocaleString("es-CL") : "Sin dato";
     document.getElementById("modal-employment").textContent = empFormatted;
@@ -737,10 +776,10 @@ function openOccupationModal(leafData, groupName) {
     const autoScore = leafData.automatizacion_score ?? 0;
     const augScore = leafData.aumentacion_score ?? 0;
 
-    document.getElementById("modal-auto-score").textContent = autoScore.toFixed(2);
+    document.getElementById("modal-auto-score").textContent = `${autoScore.toFixed(2)} · ${getExposureLabel(autoScore, scaleAutomatizacion)}`;
     document.getElementById("modal-auto-bar").style.width = `${Math.round(autoScore * 100)}%`;
 
-    document.getElementById("modal-aug-score").textContent = augScore.toFixed(2);
+    document.getElementById("modal-aug-score").textContent = `${augScore.toFixed(2)} · ${getExposureLabel(augScore, scaleAumentacion)}`;
     document.getElementById("modal-aug-bar").style.width = `${Math.round(augScore * 100)}%`;
 
     const careersListEl = document.getElementById("modal-careers-list");
@@ -772,6 +811,11 @@ function openOccupationModal(leafData, groupName) {
 
     backdrop.classList.remove("hidden");
     modal.classList.remove("hidden");
+
+    if (selectedCareers.size > 0) {
+        hasOpenedDetail = true;
+        updateCareerSteps();
+    }
 }
 
 function closeOccupationModal() {
@@ -817,11 +861,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const toggleShowAll = document.getElementById("toggle-show-all");
     toggleShowAll.addEventListener("change", (e) => {
         FILTER_MODE = e.target.checked ? 'ghost' : 'repack';
+        renderSelectedCareers();
         renderChart();
     });
 
     // Botón limpiar carreras
     document.getElementById("btn-clear-all").addEventListener("click", clearAllCareers);
+
+    // Botón global "Limpiar todo": quita carreras, desactiva "Mostrar todo", cierra el modal
+    // y vuelve a la raíz (renderChart siempre dibuja desde la raíz)
+    document.getElementById("btn-clear-everything").addEventListener("click", () => {
+        selectedCareers.clear();
+        toggleShowAll.checked = false;
+        FILTER_MODE = 'repack';
+        closeOccupationModal();
+        renderSelectedCareers();
+        renderChart();
+    });
+
+    // Aviso de vista con pocas ocupaciones: "Ver todas las ocupaciones" activa "Mostrar todo"
+    document.getElementById("btn-show-all-occupations").addEventListener("click", () => {
+        toggleShowAll.checked = true;
+        toggleShowAll.dispatchEvent(new Event("change"));
+    });
 
     // Cerrar modal central
     document.getElementById("btn-close-modal").addEventListener("click", closeOccupationModal);
@@ -839,7 +901,10 @@ document.addEventListener("DOMContentLoaded", () => {
             ]);
             if (hRes.ok && cRes.ok) {
                 ISCO_HIERARCHY_DATA = await hRes.json();
+                applyChileanNames(ISCO_HIERARCHY_DATA);
                 CATALOGO_CARRERAS = await cRes.json();
+                setColorScaleDomains(ISCO_HIERARCHY_DATA);
+                renderLegend();
                 renderChart();
             }
         } catch (e) {
@@ -848,6 +913,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Render inicial
+    renderLegend();
     renderChart();
     loadOfficialData();
 
