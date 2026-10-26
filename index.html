@@ -12,55 +12,17 @@
     <!-- Simulación D3 a Pantalla Completa (100vw x 100vh) -->
     <div id="chart"></div>
 
-    <!-- Barra Superior Flotante: Título, Escala de Color y Leyenda -->
+    <!-- Recuadro que sigue al mouse sobre una ocupación: nombre, personas (tamaño) y nivel -->
+    <div id="chart-tooltip" class="chart-tooltip hidden"></div>
+
+    <!-- Barra Superior Flotante: título y leyenda de colores -->
     <header class="floating-header">
-        <div class="header-row">
-            <h1 class="app-title">IA y Mercado Laboral</h1>
-            <div class="segmented-control">
-                <div class="tooltip-wrapper">
-                    <button id="btn-automatizacion" class="control-btn active">
-                        Automatización
-                    </button>
-                    <div class="metric-tooltip" role="tooltip">
-                        <p class="tooltip-title">Automatización</p>
-                        <p class="tooltip-desc">
-                            Mide qué parte de las tareas de un trabajo podría hacer la IA por sí sola. Mientras más alto, más tareas podrían dejar de hacerlas personas.
-                        </p>
-                        <a class="tooltip-link" href="https://www.ilo.org/publications/generative-ai-and-jobs-refined-global-index-occupational-exposure" target="_blank" rel="noopener noreferrer">
-                            Ver paper original: OIT Working Paper 140 (2025) &rarr;
-                        </a>
-                    </div>
-                </div>
-                <div class="tooltip-wrapper">
-                    <button id="btn-aumentacion" class="control-btn">
-                        Potenciación
-                    </button>
-                    <div class="metric-tooltip" role="tooltip">
-                        <p class="tooltip-title">Potenciación</p>
-                        <p class="tooltip-desc">
-                            Mide cuánto podría la IA ayudar a las personas a hacer mejor o más rápido su trabajo, sin reemplazarlas. En el informe de la OIT se llama "augmentation".
-                        </p>
-                        <a class="tooltip-link" href="https://www.ilo.org/publications/generative-ai-and-jobs-refined-global-index-occupational-exposure" target="_blank" rel="noopener noreferrer">
-                            Ver paper original: OIT Working Paper 140 (2025) &rarr;
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="legend-container">
-                <span id="legend-title" class="legend-title">Exposición a la IA</span>
-                <div id="legend-steps" class="legend-steps"></div>
-                <span class="legend-scale-note">Escala OIT de 0 a 1</span>
-            </div>
+        <h1 class="app-title">IA y Mercado Laboral</h1>
+        <div class="legend-container">
+            <!-- El ⓘ abre la ventana que explica cómo se calcula la exposición -->
+            <button id="btn-info" class="legend-title info-btn">Exposición a la IA ⓘ</button>
+            <div id="legend-steps" class="legend-steps"></div>
         </div>
-        <!-- Explicación permanente de la codificación visual -->
-        <div class="legend-encoding">
-            <svg width="44" height="30" aria-hidden="true">
-                <circle cx="8" cy="21" r="6"></circle>
-                <circle cx="29" cy="15" r="13"></circle>
-            </svg>
-            <span>Cada círculo = una ocupación · Tamaño = cuántas personas trabajan en ella · Color = exposición a la IA</span>
-        </div>
-        <p class="legend-note">Alta exposición no significa que el trabajo vaya a desaparecer.</p>
     </header>
 
     <!-- Breadcrumb: ruta del zoom actual (cada nivel es clickeable) -->
@@ -72,19 +34,28 @@
         <button id="btn-show-all-occupations" class="notice-btn">Ver todas las ocupaciones</button>
     </div>
 
-    <!-- Controles Flotantes Superiores Derechos: "Mostrar todo", "Limpiar todo" y "Reiniciar zoom" -->
+    <!-- Controles Flotantes Superiores Derechos: "Agrupar por" arriba; debajo "Mostrar todo", "Limpiar todo" y "Reiniciar zoom" -->
     <div class="floating-top-right-controls">
-        <div class="floating-switch-panel">
-            <label class="switch-container">
-                <input type="checkbox" id="toggle-show-all">
-                <span class="switch-slider"></span>
-                <span class="switch-label">Mostrar todo</span>
-            </label>
+        <div class="floating-switch-panel group-by-panel">
+            <span class="switch-label">Agrupar por</span>
+            <div class="segmented-control">
+                <button id="btn-group-tipo" class="control-btn active">Tipo de trabajo</button>
+                <button id="btn-group-exposicion" class="control-btn">Exposición a la IA</button>
+            </div>
         </div>
-        <button id="btn-clear-everything" class="floating-text-btn">Limpiar todo</button>
-        <button id="btn-reset-zoom" class="floating-icon-btn" title="Reiniciar zoom" aria-label="Reiniciar zoom">
-            ↺
-        </button>
+        <div class="top-right-row">
+            <div class="floating-switch-panel">
+                <label class="switch-container">
+                    <input type="checkbox" id="toggle-show-all">
+                    <span class="switch-slider"></span>
+                    <span class="switch-label">Mostrar todo</span>
+                </label>
+            </div>
+            <button id="btn-clear-everything" class="floating-text-btn">Limpiar todo</button>
+            <button id="btn-reset-zoom" class="floating-icon-btn" title="Reiniciar zoom" aria-label="Reiniciar zoom">
+                ↺
+            </button>
+        </div>
     </div>
 
     <!-- Ventana Flotante Izquierda: Explorador y Buscador de Carreras -->
@@ -123,6 +94,10 @@
                 <span class="empty-subtext">Busca en el panel izquierdo para añadir.</span>
             </div>
         </div>
+        <div id="saved-occupations" class="saved-occupations panel-header-row hidden">
+            <h2>Ocupaciones a comparar (<span id="saved-count">0</span>)</h2>
+            <button id="btn-open-compare" class="btn-add-career-sm">Comparar</button>
+        </div>
     </aside>
 
     <!-- Ventana Emergente Central: Detalle de Ocupación -->
@@ -132,9 +107,10 @@
             <span class="modal-badge" id="modal-isco-code">ISCO-08</span>
             <button id="btn-close-modal" class="btn-close" aria-label="Cerrar detalle">&times;</button>
         </div>
-        <div class="modal-body">
+        <div id="occupation-view" class="modal-body">
             <h2 id="modal-title" class="modal-title">Título de la Ocupación</h2>
             <p id="modal-parent-group" class="modal-group">Gran Grupo</p>
+            <button id="btn-save-occupation" class="btn-add-career-sm">Guardar</button>
 
             <div class="modal-metrics-grid">
                 <div class="metric-card">
@@ -142,18 +118,8 @@
                     <strong id="modal-employment" class="metric-value">-</strong>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-label">Gradiente OIT (IA)</span>
-                    <strong id="modal-gradient" class="metric-value badge-gradient">-</strong>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-label">Puntaje Automatización</span>
-                    <strong id="modal-auto-score" class="metric-value">-</strong>
-                    <div class="mini-bar-track"><div id="modal-auto-bar" class="mini-bar auto"></div></div>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-label">Puntaje Potenciación</span>
-                    <strong id="modal-aug-score" class="metric-value">-</strong>
-                    <div class="mini-bar-track"><div id="modal-aug-bar" class="mini-bar aug"></div></div>
+                    <span class="metric-label">Exposición a la IA (OIT)</span>
+                    <strong id="modal-gradient" class="metric-value">-</strong>
                 </div>
             </div>
 
@@ -162,6 +128,59 @@
                 <ul id="modal-careers-list" class="related-careers-list"></ul>
             </div>
         </div>
+
+        <!-- Vista de carrera: reemplaza al detalle de la ocupación al apretar "Ver" en una carrera vinculada -->
+        <div id="career-view" class="modal-body hidden">
+            <button id="btn-back-occupation" class="text-link-btn btn-back">← Volver a <span id="career-back-name"></span></button>
+            <h2 id="career-title" class="modal-title"></h2>
+            <p id="career-meta" class="modal-group"></p>
+            <div class="career-view-actions">
+                <button id="btn-career-add" class="btn-add-career-sm"></button>
+                <a href="https://www.mifuturo.cl/buscador-de-estadisticas-por-carrera/" target="_blank" rel="noopener noreferrer" class="career-mifuturo-link">MiFuturo.cl &nearr;</a>
+            </div>
+            <!-- Datos combinados de las ocupaciones de la carrera -->
+            <div class="modal-metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Empleo Nacional (ENE)</span>
+                    <strong id="career-employment" class="metric-value">-</strong>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Exposición de sus ocupaciones (OIT)</span>
+                    <strong id="career-gradient" class="metric-value">-</strong>
+                </div>
+            </div>
+            <div class="modal-related-careers">
+                <h3>Ocupaciones de esta carrera</h3>
+                <ul id="career-occupations-list" class="related-careers-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventana Emergente Central: Comparación de ocupaciones guardadas -->
+    <div id="compare-modal" class="occupation-modal hidden">
+        <div class="modal-header">
+            <h2 class="modal-title">Comparar ocupaciones</h2>
+            <button id="btn-close-compare" class="btn-close" aria-label="Cerrar comparación">&times;</button>
+        </div>
+        <div id="compare-list"></div>
+    </div>
+
+    <!-- Ventana Emergente Central: Cómo se calcula la exposición (se abre con el ⓘ de la leyenda) -->
+    <div id="info-modal" class="occupation-modal hidden">
+        <div class="modal-header">
+            <h2 class="modal-title">¿Cómo se calcula la exposición a la IA?</h2>
+            <button id="btn-close-info" class="btn-close" aria-label="Cerrar explicación">&times;</button>
+        </div>
+        <ol class="info-steps tooltip-desc">
+            <li>La OIT dividió cada ocupación en las tareas que la componen.</li>
+            <li>Cada tarea recibió un puntaje de 0 a 1 según cuánto podría hacerla la IA generativa. Los puntajes salen de encuestas a 1.640 trabajadores en Polonia, de rondas con expertos internacionales y de una IA que estimó el puntaje de las demás tareas.</li>
+            <li>El nivel de la ocupación depende del promedio de sus tareas y de cuánto varían entre ellas:</li>
+        </ol>
+        <ul id="info-levels" class="info-levels"></ul>
+        <p class="tooltip-desc">Es una exposición posible, no un impacto real. Alta exposición no significa que el trabajo vaya a desaparecer: lo más probable es que se transforme y que la IA ayude en parte de sus tareas.</p>
+        <a class="tooltip-link" href="https://www.ilo.org/publications/generative-ai-and-jobs-refined-global-index-occupational-exposure" target="_blank" rel="noopener noreferrer">
+            Ver paper original: OIT Working Paper 140 (2025), tabla 5 &rarr;
+        </a>
     </div>
 
     <script src="script.js"></script>
